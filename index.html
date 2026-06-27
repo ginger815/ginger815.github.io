@@ -584,7 +584,9 @@ function bindHomeEvents(){
   _swTimer=setInterval(()=>go((cur+1)%C.BANNERS.length),3000);
 }
 function getToday(){return new Date().toDateString()}
-function openCheckin(){
+async function openCheckin(){
+  // 尝试从服务端同步签到状态
+  if(apiOnline){try{const s=await Api.checkinStatus();S.setN('chk_day',s.checkinDay);S.setB('chk_today',s.checkedInToday);S.set('chk_date',getToday());}catch(e){}}
   const lastDate=S.get('chk_date','');
   if(lastDate!==getToday()){S.setB('chk_today',false);S.set('chk_date',getToday())}
   const day=S.getN('chk_day',1);const ci=S.getB('chk_today',false);
@@ -717,13 +719,19 @@ function renderLevelSelect(){
   });
   h+=`</div></div>`;document.getElementById('game-ls').innerHTML=h;
 }
-function startLevel(lid){
+async function startLevel(lid){
   if(!gm)gm=new GameModel();gm.setLv(lid);gm.score=0;gm.initBrd();
+  // 尝试从云端加载存档
+  if(apiOnline){try{const d=await Api.loadGame();if(d.saved&&d.saved.board&&d.saved.currentLevel===lid){gm.loadProgressA?gm.loadProgressA(d.saved):loadCloudSave(d.saved);}}catch(e){}}
   selR=-1;selC=-1;curCombo=0;maxCombo=0;hMode=bMode=lMode=cMode=false;
   items=S.getO('items',{});proc=false;rStamp=0;gState='playing';
   document.getElementById('game-ls').style.display='none';document.getElementById('game-play').style.display='flex';
   document.getElementById('game-result').classList.add('hidden');document.getElementById('game-pause').classList.add('hidden');
   renderGP();
+}
+function loadCloudSave(s){
+  gm.score=s.score;gm.moves=s.moves_left;gm.ts=s.target_score;gm.lv=s.current_level;
+  if(s.board)for(let r=0;r<C.BR;r++)for(let c=0;c<C.BC;c++)if(s.board[r]&&s.board[r][c]!==undefined)gm.brd[r][c]={type:s.board[r][c],id:gm._genId(),row:r,col:c,matched:false,isNew:false};
 }
 function renderGP(){
   const g=gm,s=g.score,t=g.ts,m=g.moves;
@@ -800,7 +808,9 @@ async function onWin(){
   gState='win';const lv=C.LEVELS[gm.lv-1],cr=lv.ts*10,dr=Math.floor(lv.ts/10),eg=C.EXP_CLR+gm.lv*5;
   if(!userM)loadHome();userM.addCoins(cr);userM.addDia(dr);userM.unlockLv(gm.lv);userM.updHS(gm.score);
   const lu=userM.addExp(eg);S.setO('user_'+curUser,userM.toObj());S.setN('coins',userM.coins);S.setN('diamonds',userM.diamonds);S.setN('high_score',userM.highScore);
-  syncToServer(); // 云端同步
+  syncToServer();
+  // 云端存档: 构建棋盘类型矩阵
+  if(apiOnline){const bd=gm.brd.map(r=>r.map(g=>g.type));Api.saveGame(bd,gm.score,gm.movesLeft,gm.ts,gm.lv).catch(()=>{});}
   showResult('🎉','恭喜通关！','得分: '+gm.score+'\n💰 +'+cr+'  💎 +'+dr+'\n经验 +'+eg+(lu>0?'\n等级提升！Lv.'+userM.level:''),true);
 }
 function showResult(ic,title,sub,showRetry){
