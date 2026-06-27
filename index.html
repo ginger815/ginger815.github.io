@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>开心消消乐 - MatchGame</title>
+<style>
+:root{--pink:#FF6B9D;--pink-light:#FFF0F5;--bg:#FFF5F8;--white:#FFFFFF;--text:#333333;--gray:#999999;--shadow:0 4px 16px rgba(0,0,0,0.1);--shadow-sm:0 2px 6px rgba(0,0,0,0.06)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;background:#f0f0f0;display:flex;justify-content:center;align-items:center;min-height:100vh;overflow-x:hidden}
+#app{width:100%;max-width:480px;min-height:100vh;background:var(--bg);position:relative;overflow:hidden;box-shadow:0 0 30px rgba(0,0,0,0.15)}
+.page{display:none;width:100%;min-height:100vh;flex-direction:column}
+.page.active{display:flex}
+.btn{border:none;cursor:pointer;font-weight:600;transition:all 0.2s;display:flex;align-items:center;justify-content:center}
+.btn:active{transform:scale(0.96);opacity:0.85}
+.btn-primary{background:var(--pink);color:#fff;border-radius:24px}
+.btn-outline{background:transparent;border:2px solid var(--pink);color:var(--pink);border-radius:24px}
+.btn-ghost{background:transparent;color:var(--gray)}
+.btn-sm{height:32px;padding:0 14px;font-size:13px;border-radius:16px}
+.btn-md{height:44px;padding:0 24px;font-size:15px;border-radius:22px}
+.btn-lg{height:50px;width:100%;font-size:17px;border-radius:25px}
+.card{background:var(--white);border-radius:14px;box-shadow:var(--shadow-sm);padding:14px}
+.input-row{display:flex;align-items:center;height:52px;background:#FAFAFA}
+.input-row .ico{font-size:20px;margin:0 10px 0 15px;flex-shrink:0}
+.input-row input{flex:1;height:100%;border:none;background:transparent;font-size:15px;outline:none}
+.input-row .pwd-eye{font-size:18px;margin-right:15px;cursor:pointer;user-select:none}
+.divider{height:1px;background:#F0F0F0;margin:0 15px 0 50px}
+.stat-col{display:flex;flex-direction:column;align-items:center;flex:1}
+.stat-col .si{font-size:22px;margin-bottom:2px}
+.stat-col .sv{font-size:18px;font-weight:700;color:var(--pink)}
+.stat-col .sl{font-size:10px;color:var(--gray);margin-top:1px}
+#toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.82);color:#fff;padding:10px 22px;border-radius:22px;font-size:14px;z-index:9999;opacity:0;pointer-events:none;transition:opacity 0.3s;max-width:90%;text-align:center;white-space:pre-line}
+#toast.show{opacity:1}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:100}
+.overlay.hidden{display:none}
+.overlay-card{background:#fff;border-radius:18px;padding:24px 20px;text-align:center;width:82%;box-shadow:0 16px 40px rgba(0,0,0,0.25)}
+.overlay-card h2{font-size:24px;margin:8px 0}
+.go-sub{font-size:14px;color:#666;line-height:1.8;margin:6px 0 16px;white-space:pre-line}
+.btn-row{display:flex;gap:12px;justify-content:center}
+/* Login */
+#login-page{background:var(--bg);align-items:center}
+.login-logo{margin-top:40px;text-align:center}
+.login-logo .lw{width:110px;height:110px;background:var(--pink-light);border-radius:55px;display:flex;align-items:center;justify-content:center;font-size:60px;margin:0 auto 12px;box-shadow:0 4px 16px rgba(255,107,157,0.2)}
+.login-logo h1{font-size:28px;font-weight:700;color:var(--pink);margin-bottom:4px}
+.login-logo p{font-size:14px;color:var(--gray);margin-bottom:24px}
+.mode-switch{display:flex;width:80%;justify-content:space-around;margin-bottom:18px}
+.mode-btn{width:38%;height:40px;border-radius:20px;font-size:15px;font-weight:700;border:none;cursor:pointer;transition:all 0.2s}
+.mode-btn.on{background:var(--pink);color:#fff}
+.mode-btn.off{background:#F0F0F0;color:#999}
+.login-form{width:85%;background:#fff;border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+.lf-opt{width:85%;display:flex;align-items:center;margin-top:12px;font-size:14px;color:#666}
+.lf-opt input[type=checkbox]{accent-color:var(--pink);margin-right:6px}
+.login-footer{margin-top:auto;padding:18px;font-size:11px;color:#CCC}
+/* Home */
+.home-header{background:#fff;padding:42px 18px 12px;display:flex;align-items:center;gap:10px}
+.home-header .av{width:52px;height:52px;background:var(--pink-light);border-radius:26px;display:flex;align-items:center;justify-content:center;font-size:32px;cursor:pointer}
+.home-header .info h3{font-size:16px;font-weight:700;color:var(--text);margin-bottom:2px}
+.home-header .tags{display:flex;gap:6px;align-items:center;font-size:11px}
+.home-header .lv{background:var(--pink-light);color:var(--pink);padding:2px 8px;border-radius:6px}
+.home-header .money{color:#FF9500;font-size:12px}
+.tab-bar{display:flex;background:#fff;border-top:1px solid #f0f0f0;height:54px}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:var(--gray)}
+.tab-item .ti{font-size:22px}
+.tab-item.active{color:var(--pink);font-weight:700}
+.scroll-area{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* Swiper */
+.swiper-wrap{width:92%;height:130px;margin:12px auto 0;border-radius:14px;overflow:hidden;position:relative;cursor:pointer}
+.swiper-wrap .slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;transition:opacity 0.6s;opacity:0}
+.swiper-wrap .slide.active{opacity:1}
+.swiper-dots{display:flex;gap:6px;justify-content:center;margin-top:8px}
+.swiper-dots .dot{width:8px;height:8px;border-radius:50%;background:#CCC;cursor:pointer}
+.swiper-dots .dot.active{background:var(--pink)}
+.section-title{font-size:16px;font-weight:700;color:var(--text);padding:16px 0 8px;width:92%;margin:0 auto}
+.func-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);gap:8px;width:92%;margin:0 auto;height:190px}
+.func-item{border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:11px;color:#666;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,0.04);transition:transform 0.15s}
+.func-item:active{transform:scale(0.95)}
+.func-item .fi{font-size:28px;margin-bottom:4px}
+.activity-row{width:92%;margin:0 auto;display:flex;gap:10px}
+.activity-card{flex:1;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#fff;cursor:pointer;padding:14px 8px;line-height:1.5}
+.activity-card:active{transform:scale(0.96)}
+/* LB */
+.lb-tabs{display:flex;height:42px}
+.lb-tab{flex:1;text-align:center;line-height:42px;font-size:14px;color:#666;cursor:pointer;border-bottom:2px solid transparent}
+.lb-tab.active{color:var(--pink);border-bottom-color:var(--pink);font-weight:700}
+.lb-list{padding:8px 12px}
+.lb-item{display:flex;align-items:center;padding:10px 14px;background:#fff;border-radius:10px;margin-bottom:6px}
+.lb-item.me{background:var(--pink-light);border:2px solid var(--pink)}
+.lb-rank{font-size:16px;font-weight:700;width:28px;text-align:center;color:#999}
+.lb-rank.gold{color:#FFD700}.lb-rank.silver{color:#C0C0C0}.lb-rank.bronze{color:#CD7F32}
+.lb-av{font-size:24px;width:38px;height:38px;background:#F5F5F5;border-radius:19px;display:flex;align-items:center;justify-content:center}
+.lb-info{margin-left:8px;flex:1}.lb-info .name{font-size:14px;font-weight:500;color:#333}.lb-info .lv{font-size:10px;color:#999}
+.lb-score{font-size:15px;font-weight:700;color:var(--pink)}
+/* Shop */
+.shop-bal{font-size:12px;font-weight:700;color:#FF9500;background:#FFF8E1;padding:5px 10px;border-radius:12px}
+.shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:92%;margin:0 auto}
+.shop-item{background:#fff;border-radius:12px;padding:12px 8px;text-align:center;box-shadow:var(--shadow-sm)}
+.shop-item .sii{font-size:36px;width:56px;height:56px;background:#F8F8F8;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto}
+.shop-item .sin{font-size:14px;font-weight:700;color:#333;margin-top:6px}
+.shop-item .sid{font-size:10px;color:#999;margin-top:2px}
+.shop-item .sio{font-size:10px;color:#4CAF50;margin-top:2px}
+.shop-item .sib{margin:8px auto 4px;height:32px;padding:0 20px;border:none;border-radius:16px;font-size:13px;font-weight:700;color:#fff;cursor:pointer}
+.shop-item .sib.ok{background:var(--pink)}.shop-item .sib.no{background:#CCC;cursor:not-allowed}
+/* Profile */
+.profile-av{width:72px;height:72px;background:var(--pink-light);border-radius:36px;display:flex;align-items:center;justify-content:center;font-size:44px;box-shadow:0 3px 12px rgba(255,107,157,0.2)}
+.profile-exp{width:120px;height:5px;background:#F0F0F0;border-radius:3px;margin-top:4px;overflow:hidden}
+.profile-exp-fill{height:100%;background:var(--pink);border-radius:3px;transition:width 0.3s}
+.setting-row{display:flex;align-items:center;padding:12px 16px;background:#fff;border-radius:10px}
+.setting-row .sr{font-size:20px;margin-right:10px}
+.toggle-wrap{position:relative;width:48px;height:28px}
+.toggle-wrap input{opacity:0;width:0;height:0}
+.toggle-wrap .sl{position:absolute;inset:0;background:#ddd;border-radius:14px;transition:0.3s;cursor:pointer}
+.toggle-wrap .sl::before{content:'';position:absolute;width:22px;height:22px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:0.3s}
+.toggle-wrap input:checked+.sl{background:var(--pink)}
+.toggle-wrap input:checked+.sl::before{transform:translateX(20px)}
+/* Checkin */
+.checkin-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:200}
+.checkin-overlay.hidden{display:none}
+.ci-card{width:88%;background:#fff;border-radius:18px;padding:20px;text-align:center;box-shadow:0 16px 40px rgba(0,0,0,0.25)}
+.ci-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.ci-day{border-radius:10px;padding:10px 4px;text-align:center;font-size:10px;background:#F8F8F8}
+.ci-day.cur{background:var(--pink-light);border:2px solid var(--pink)}
+/* Game */
+.game-top{padding:38px 12px 6px;display:flex;align-items:center;gap:6px}
+.gt-btn{height:30px;padding:0 14px;border-radius:14px;border:none;font-size:13px;cursor:pointer}
+.gt-back{background:var(--pink-light);color:var(--pink)}.gt-ghost{background:#F5F5F5;color:#666}
+.gt-title{flex:1;text-align:center;font-size:17px;font-weight:700;color:#333}
+.game-stats{display:flex;justify-content:space-around;background:#fff;border-radius:12px;padding:10px 0;margin:0 12px;box-shadow:var(--shadow-sm)}
+.gs-item{text-align:center}.gs-l{font-size:11px;color:#999}.gs-v{font-size:24px;font-weight:700}
+.game-progress{margin:6px 12px;height:6px;background:#F0F0F0;border-radius:3px;overflow:hidden}
+.game-progress-fill{height:100%;background:var(--pink);border-radius:3px;transition:width 0.3s}
+.game-items{display:flex;gap:4px;justify-content:space-between;margin:6px 12px}
+.gib{flex:1;text-align:center;background:#fff;border-radius:8px;padding:4px 2px;font-size:9px;color:#666;cursor:pointer;border:2px solid transparent}
+.gib:active{transform:scale(0.94)}.gib.on{border-color:var(--pink);background:var(--pink-light)}
+.gib .gib-i{font-size:20px}.gib .gib-c{font-size:9px;font-weight:700;color:var(--pink)}
+.item-hint{text-align:center;font-size:11px;color:var(--pink);background:var(--pink-light);padding:4px 10px;border-radius:6px;margin:2px 12px}
+.game-board-wrap{margin:6px auto;width:94%;aspect-ratio:1;max-height:400px;background:#EDE0D8;border-radius:10px;padding:4px}
+.game-board{display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);gap:2px;width:100%;height:100%}
+.gem{border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:transform 0.15s,opacity 0.3s,box-shadow 0.15s;user-select:none;touch-action:none}
+.gem:active{transform:scale(0.88)}.gem.sel{box-shadow:0 0 0 3px rgba(255,255,255,0.9),0 0 12px rgba(255,107,157,0.5);z-index:2}
+.gem.match{transform:scale(0.1);opacity:0.2}.gem.pow{box-shadow:0 0 10px rgba(255,255,255,0.7)}
+.gem.new{animation:fallIn 0.28s ease-out}
+@keyframes fallIn{from{transform:translateY(-38px);opacity:0.6}to{transform:translateY(0);opacity:1}}
+.score-pop{position:absolute;font-size:32px;font-weight:700;color:var(--pink);pointer-events:none;z-index:50;animation:scoreUp 0.8s ease-out forwards}
+@keyframes scoreUp{0%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-60px)}}
+.go-card{width:82%;background:#fff;border-radius:18px;padding:24px 20px;text-align:center;box-shadow:0 16px 40px rgba(0,0,0,0.25)}
+.go-icon{font-size:50px}.go-title{font-size:24px;font-weight:700;margin:8px 0}
+.level-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:92%;margin:0 auto;padding:8px 0 30px}
+.level-card{background:#fff;border-radius:14px;padding:18px 12px;text-align:center;cursor:pointer;box-shadow:var(--shadow-sm)}
+.level-card:active{transform:scale(0.95)}.level-card.locked{background:#F5F5F5;cursor:not-allowed}.level-card.cleared{background:#F5FFF5}
+.lc-icon{font-size:28px;margin-bottom:6px}.lc-name{font-size:15px;font-weight:700;color:#333}.lc-desc{font-size:10px;color:#999;margin-top:4px}
+.locked .lc-name{color:#CCC}
+.page-head{display:flex;align-items:center;padding:40px 16px 12px;gap:10px}
+.ph-title{flex:1;text-align:center;font-size:20px;font-weight:700;color:#333}.ph-spc{width:60px}
+.avatar-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;width:80%}
+.avatar-opt{width:44px;height:44px;border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:26px;background:#F5F5F5;cursor:pointer;border:2px solid transparent}
+.avatar-opt.sel{background:var(--pink-light);border-color:var(--pink)}
+.bottom-spacer{height:60px}
+.btn-danger{background:#FF5252;color:#fff}.btn-danger-line{border:1px solid #FF5252;color:#FF5252;background:#fff}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="toast"></div>
+
+<!-- ===== LOGIN ===== -->
+<div class="page active" id="login-page">
+<div class="login-logo"><div class="lw">🍬</div><h1>开心消消乐</h1><p id="login-sub">快乐三消，畅玩无限</p></div>
+<div class="mode-switch"><button class="mode-btn on" id="mode-login" onclick="switchMode('login')">登 录</button><button class="mode-btn off" id="mode-reg" onclick="switchMode('register')">注 册</button></div>
+<div class="login-form">
+<div class="input-row"><span class="ico">👤</span><input id="luser" placeholder="请输入用户名（即游戏昵称）"></div>
+<div class="divider"></div>
+<div class="input-row"><span class="ico">🔒</span><input type="password" id="lpwd" placeholder="请输入密码（至少6位）"><span class="pwd-eye" onclick="togglePwd('lpwd',this)">👁</span></div>
+<div class="divider" id="cdiv" style="display:none"></div>
+<div class="input-row" id="crow" style="display:none"><span class="ico">🔒</span><input type="password" id="lcpwd" placeholder="确认密码"><span class="pwd-eye" onclick="togglePwd('lcpwd',this)">👁</span></div>
+</div>
+<div class="lf-opt" id="rmrow"><input type="checkbox" id="rmpwd"><label for="rmpwd">记住密码</label></div>
+<button class="btn btn-primary btn-lg" style="width:85%;margin-top:18px;box-shadow:0 4px 12px rgba(255,107,157,0.3)" id="login-btn" onclick="doLogin()">登  录</button>
+<div class="login-footer">© 2024 MatchGame 消消乐</div>
+</div>
+
+<!-- ===== HOME ===== -->
+<div class="page" id="home-page">
+<div class="home-header">
+<div class="av" id="h-av" onclick="navigateTo('profile')">😊</div>
+<div class="info"><h3 id="h-nick">新玩家</h3><div class="tags"><span class="lv" id="h-lv">Lv.1</span><span class="money" id="h-bal">💰500 💎50</span></div></div>
+<div style="flex:1"></div></div>
+<div class="scroll-area" id="home-tab-content"></div>
+<div class="tab-bar">
+<div class="tab-item active" onclick="switchHomeTab(0)"><span class="ti">🏠</span>首页</div>
+<div class="tab-item" onclick="switchHomeTab(1)"><span class="ti">🏆</span>排行</div>
+<div class="tab-item" onclick="switchHomeTab(2)"><span class="ti">🛒</span>商城</div>
+<div class="tab-item" onclick="switchHomeTab(3)"><span class="ti">👤</span>我的</div>
+</div>
+<div class="checkin-overlay hidden" id="chk-overlay" onclick="if(event.target===this)closeCheckin()"><div class="ci-card" id="chk-card"></div></div>
+</div>
+
+<!-- ===== GAME ===== -->
+<div class="page" id="game-page">
+<div id="game-ls"></div>
+<div id="game-play" style="flex:1;display:none;flex-direction:column"></div>
+<div class="overlay hidden" id="game-result" style="background:rgba(0,0,0,0.4)"><div class="go-card" id="go-card"></div></div>
+<div class="overlay hidden" id="game-pause" style="background:rgba(255,255,255,0.85)"><div class="overlay-card">
+<div style="font-size:46px">⏸</div><h2>游戏暂停</h2>
+<button class="btn btn-primary btn-md" style="background:#4CAF50;width:70%;margin-bottom:10px" onclick="resumeGame()">继续游戏</button>
+<button class="btn btn-outline btn-md" style="border-color:#FF5252;color:#FF5252;width:70%" onclick="backToLevelSelect()">返回关卡</button>
+</div></div>
+</div>
+
+<!-- ===== LEADERBOARD ===== -->
+<div class="page" id="leaderboard-page"></div>
+<!-- ===== PROFILE ===== -->
+<div class="page" id="profile-page"></div>
+<!-- ===== SHOP ===== -->
+<div class="page" id="shop-page"></div>
+</div><!-- /#app -->
+
+<script>
+// ============================================================
+// CONSTANTS
+// ============================================================
+const C={
+  BR:8,BC:8,GT:6,BOMB:6,LIGHT:7,PPCH:0.04,
+  COLORS:['#FF4444','#4488FF','#44CC44','#FFCC00','#CC44CC','#FF8844','#333','#333'],
+  ICONS:['🔴','🔵','🟢','🟡','🟣','🟠','💣','⚡'],
+  SCORE_PER_GEM:1,COMBO:[1,1.5,2,2.5,3],
+  ICOINS:500,IDIA:50,
+  EXP_CLR:30,EXP_CHK:10,EXP_TSK:15,EXP_BASE:100,EXP_GROW:50,
+  LEVELS:[
+    {id:1,name:'关卡1',ts:50,moves:30},{id:2,name:'关卡2',ts:65,moves:30},
+    {id:3,name:'关卡3',ts:80,moves:30},{id:4,name:'关卡4',ts:95,moves:30},
+    {id:5,name:'关卡5',ts:110,moves:30},{id:6,name:'关卡6',ts:125,moves:30},
+    {id:7,name:'关卡7',ts:140,moves:30},{id:8,name:'关卡8',ts:155,moves:30},
+    {id:9,name:'关卡9',ts:170,moves:30},{id:10,name:'关卡10',ts:185,moves:30}
+  ],
+  SCOINS:[
+    {id:1,name:'步数+5',icon:'👟',price:100,cur:'coin',desc:'增加5步',et:'moves',ev:5},
+    {id:2,name:'消除锤',icon:'🔨',price:200,cur:'coin',desc:'消除同色棋子',et:'hammer',ev:1},
+    {id:3,name:'随机重排',icon:'🎲',price:150,cur:'coin',desc:'重排全部棋子',et:'shuffle',ev:1}
+  ],
+  SDIA:[
+    {id:4,name:'彩虹炸弹',icon:'💣',price:15,cur:'diamond',desc:'消除整行',et:'bomb',ev:1},
+    {id:5,name:'闪电道具',icon:'⚡',price:12,cur:'diamond',desc:'消除整列',et:'lightning',ev:1},
+    {id:6,name:'十字消除',icon:'✚',price:20,cur:'diamond',desc:'消除十字',et:'cross',ev:1},
+    {id:7,name:'复活卡',icon:'💖',price:25,cur:'diamond',desc:'复活+10步',et:'revive',ev:10},
+    {id:8,name:'限时礼包',icon:'🎁',price:30,cur:'diamond',desc:'随机3-5道具',et:'pack',ev:1}
+  ],
+  CHK:[
+    {day:1,coins:50,dia:2,icon:'🎁'},{day:2,coins:80,dia:3,icon:'💰'},
+    {day:3,coins:100,dia:5,icon:'💎'},{day:4,coins:120,dia:5,icon:'🔨'},
+    {day:5,coins:150,dia:8,icon:'⚡'},{day:6,coins:200,dia:10,icon:'🎲'},
+    {day:7,coins:500,dia:20,icon:'👑'}
+  ],
+  TASKS:[
+    {id:1,name:'通关任意3关',tg:3,rc:100,rd:3,icon:'🎮'},
+    {id:2,name:'单次消除10个以上',tg:1,rc:80,rd:2,icon:'💥'},
+    {id:3,name:'使用道具3次',tg:3,rc:60,rd:2,icon:'🔧'},
+    {id:4,name:'获得500以上积分',tg:500,rc:120,rd:5,icon:'⭐'},
+    {id:5,name:'完成签到',tg:1,rc:50,rd:1,icon:'📅'}
+  ],
+  BANNERS:[
+    {id:1,title:'每日登录奖励',sub:'连续7天领取豪华大礼包',color:'#FF6B9D',icon:'🎁'},
+    {id:2,title:'周末双倍经验',sub:'周六日通关经验翻倍',color:'#FF8A65',icon:'✨'},
+    {id:3,title:'新关卡挑战',sub:'10关全部开放等您来战',color:'#4FC3F7',icon:'🚀'}
+  ],
+  AVATARS:['😊','😎','🌸','💪','🦁','🌟','👑','🔥','🎮','🌈','🌻','🎯']
+};
+
+// ============================================================
+// STORAGE
+// ============================================================
+const S={
+  pk(k){return'mg_'+k;},
+  get(k,d){try{const v=localStorage.getItem('mg_'+k);return v!==null?v:d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem('mg_'+k,v)}catch(e){}},
+  getO(k,d){try{const v=localStorage.getItem('mg_'+k);return v?JSON.parse(v):d}catch(e){return d}},
+  setO(k,v){try{localStorage.setItem('mg_'+k,JSON.stringify(v))}catch(e){}},
+  getN(k,d){return Number(S.get(k,String(d)))},
+  setN(k,v){S.set(k,String(v))},
+  getB(k,d){return S.get(k,d?'1':'0')==='1'},
+  setB(k,v){S.set(k,v?'1':'0')},
+  clr(){try{const ks=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('mg_'))ks.push(k)}ks.forEach(k=>localStorage.removeItem(k))}catch(e){}}
+};
+
+// ============================================================
+// TOAST & NAVIGATION
+// ============================================================
+let _toastTmr;
+function toast(m,d=2000){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');clearTimeout(_toastTmr);_toastTmr=setTimeout(()=>e.classList.remove('show'),d)}
+function navigateTo(pg){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const el=document.getElementById(pg+'-page');if(el)el.classList.add('active');
+  if(pg==='home'){loadHome();renderHome()}
+  else if(pg==='game')renderLevelSelect()
+  else if(pg==='leaderboard')renderLbPage()
+  else if(pg==='profile')renderProfPage()
+  else if(pg==='shop')renderShopPg()
+  else if(pg==='login')document.getElementById('login-page').classList.add('active')
+}
+
+// ============================================================
+// USER MODEL
+// ============================================================
+class UserModel{
+  constructor(d){
+    this.username=d?d.username||'':'';this.password=d?d.password||'':'';
+    this.nickname=d?d.nickname||'新玩家':'新玩家';this.avatar=d?d.avatar||'😊':'😊';
+    this.level=d?d.level||1:1;this.exp=d?d.exp||0:0;
+    this.coins=d?d.coins||C.ICOINS:C.ICOINS;this.diamonds=d?d.diamonds||C.IDIA:C.IDIA;
+    this.highScore=d?d.highScore||0:0;this.clearedLevels=d?d.clearedLevels||[]:[];
+    this.totalCleared=d?d.totalCleared||0:0;
+  }
+  toObj(){return{username:this.username,password:this.password,nickname:this.nickname,avatar:this.avatar,level:this.level,exp:this.exp,coins:this.coins,diamonds:this.diamonds,highScore:this.highScore,clearedLevels:this.clearedLevels,totalCleared:this.totalCleared}}
+  getExpNext(){return C.EXP_BASE+(this.level-1)*C.EXP_GROW}
+  addExp(am){this.exp+=am;let g=0;while(this.exp>=this.getExpNext()){this.exp-=this.getExpNext();this.level++;g++}return g}
+  addCoins(am){this.coins=Math.max(0,this.coins+am)}
+  addDia(am){this.diamonds=Math.max(0,this.diamonds+am)}
+  updHS(s){if(s>this.highScore)this.highScore=s}
+  unlockLv(lid){if(lid>=1&&lid<=10&&this.clearedLevels.indexOf(lid)<0){this.clearedLevels.push(lid);this.totalCleared++}}
+  isUnlocked(lid){if(lid===1)return true;return this.clearedLevels.indexOf(lid-1)>=0}
+  isCleared(lid){return this.clearedLevels.indexOf(lid)>=0}
+}
+
+// ============================================================
+// GAME MODEL
+// ============================================================
+class GameModel{
+  constructor(){
+    this.brd=[];this.score=0;this.moves=30;this.ts=50;this.lv=1;this.cc=0;this._id=0;
+  }
+  _genId(){return++this._id}
+  _rType(){const r=Math.random();if(r<C.PPCH/2)return C.BOMB;if(r<C.PPCH)return C.LIGHT;return Math.floor(Math.random()*C.GT)}
+  _wouldMatch(r,c,type,ra){
+    if(c>=2&&ra[c-1]&&ra[c-1].type===type&&ra[c-2]&&ra[c-2].type===type)return true;
+    if(r>=2&&this.brd[r-1]&&this.brd[r-1][c]&&this.brd[r-1][c].type===type&&this.brd[r-2]&&this.brd[r-2][c]&&this.brd[r-2][c].type===type)return true;
+    return false;
+  }
+  initBrd(){
+    this.brd=[];this._id=0;this.score=0;
+    for(let r=0;r<C.BR;r++){const ra=[];for(let c=0;c<C.BC;c++){let type,at=0;do{type=this._rType();at++}while(at<50&&this._wouldMatch(r,c,type,ra));ra.push({type,id:this._genId(),row:r,col:c,matched:false,isNew:false})}this.brd.push(ra)}
+  }
+  swap(g1,g2){const[tr,tc]=[g1.row,g1.col];g1.row=g2.row;g1.col=g2.col;g2.row=tr;g2.col=tc;this.brd[g1.row][g1.col]=g1;this.brd[g2.row][g2.col]=g2}
+  adj(g1,g2){return Math.abs(g1.row-g2.row)+Math.abs(g1.col-g2.col)===1}
+  findMatches(){
+    const set=new Set();const list=[];
+    for(let r=0;r<C.BR;r++){for(let c=0;c<C.BC-2;c++){const a=this.brd[r][c],b=this.brd[r][c+1],d=this.brd[r][c+2];if(a&&b&&d&&a.type===b.type&&b.type===d.type){let e=c+2;while(e+1<C.BC&&this.brd[r][e+1]&&this.brd[r][e+1].type===a.type)e++;for(let k=c;k<=e;k++){const g=this.brd[r][k];if(g&&!set.has(g.id)){set.add(g.id);list.push(g)}}c=e}}}
+    for(let c=0;c<C.BC;c++){for(let r=0;r<C.BR-2;r++){const a=this.brd[r][c],b=this.brd[r+1]?this.brd[r+1][c]:null,d=this.brd[r+2]?this.brd[r+2][c]:null;if(a&&b&&d&&a.type===b.type&&b.type===d.type){let e=r+2;while(e+1<C.BR&&this.brd[e+1]&&this.brd[e+1][c]&&this.brd[e+1][c].type===a.type)e++;for(let k=r;k<=e;k++){const g=this.brd[k][c];if(g&&!set.has(g.id)){set.add(g.id);list.push(g)}}r=e}}}
+    const extra=[];
+    for(const gem of list){
+      if(gem.type===C.BOMB){for(let cc=0;cc<C.BC;cc++){const g=this.brd[gem.row][cc];if(g&&!set.has(g.id)){set.add(g.id);extra.push(g)}}}
+      else if(gem.type===C.LIGHT){for(let rr=0;rr<C.BR;rr++){const g=this.brd[rr][gem.col];if(g&&!set.has(g.id)){set.add(g.id);extra.push(g)}}}
+    }
+    for(let r=0;r<C.BR;r++){for(let c=0;c<C.BC;c++){const g=this.brd[r][c];if(!g||set.has(g.id))continue;if(g.type!==C.BOMB&&g.type!==C.LIGHT)continue;let near=false;
+      if(r>0){const n=this.brd[r-1][c];if(n&&set.has(n.id))near=true}
+      if(!near&&r<C.BR-1){const n=this.brd[r+1][c];if(n&&set.has(n.id))near=true}
+      if(!near&&c>0){const n=this.brd[r][c-1];if(n&&set.has(n.id))near=true}
+      if(!near&&c<C.BC-1){const n=this.brd[r][c+1];if(n&&set.has(n.id))near=true}
+      if(near){set.add(g.id);list.push(g);if(g.type===C.BOMB){for(let cc=0;cc<C.BC;cc++){const gg=this.brd[r][cc];if(gg&&!set.has(gg.id)){set.add(gg.id);extra.push(gg)}}}else{for(let rr=0;rr<C.BR;rr++){const gg=this.brd[rr][c];if(gg&&!set.has(gg.id)){set.add(gg.id);extra.push(gg)}}}}}}
+    for(const e of extra)list.push(e);
+    return list;
+  }
+  removeAndDrop(){
+    for(let c=0;c<C.BC;c++){
+      const keep=[];for(let r=C.BR-1;r>=0;r--){const g=this.brd[r][c];if(g&&!g.matched)keep.push(g)}
+      let wr=C.BR-1;for(const g of keep){g.row=wr;g.col=c;g.isNew=false;this.brd[wr][c]=g;wr--}
+      for(let r=wr;r>=0;r--)this.brd[r][c]={type:this._rType(),id:this._genId(),row:r,col:c,matched:false,isNew:true}
+    }
+    for(let r=0;r<C.BR;r++)for(let c=0;c<C.BC;c++)if(this.brd[r][c])this.brd[r][c].matched=false;
+  }
+  calcScore(cnt){let idx=this.cc;if(idx>=C.COMBO.length)idx=C.COMBO.length-1;const g=Math.floor(cnt*C.SCORE_PER_GEM*C.COMBO[idx]);this.score+=g;return g}
+  useMove(){if(this.moves>0){this.moves--;return true}return false}
+  isWin(){return this.score>=this.ts}
+  isLose(){return this.moves<=0&&!this.isWin()}
+  hasMoves(){
+    for(let r=0;r<C.BR;r++)for(let c=0;c<C.BC;c++){
+      if(c+1<C.BC){this.swap(this.brd[r][c],this.brd[r][c+1]);const m=this.findMatches();this.swap(this.brd[r][c],this.brd[r][c+1]);if(m.length>0)return true}
+      if(r+1<C.BR){this.swap(this.brd[r][c],this.brd[r+1][c]);const m=this.findMatches();this.swap(this.brd[r][c],this.brd[r+1][c]);if(m.length>0)return true}
+    }
+    return false;
+  }
+  setLv(lid){this.lv=lid;const idx=lid-1;if(idx>=0&&idx<C.LEVELS.length){this.ts=C.LEVELS[idx].ts;this.moves=C.LEVELS[idx].moves}this.score=0}
+  reset(){this.score=0;this.cc=0;const idx=this.lv-1;if(idx>=0&&idx<C.LEVELS.length){this.ts=C.LEVELS[idx].ts;this.moves=C.LEVELS[idx].moves}this.initBrd()}
+}
+
+// ============================================================
+// GLOBAL STATE
+// ============================================================
+let curUser=null,userM=null,gm=null,loginMode='login',htIdx=0;
+let curCombo=0,maxCombo=0,gState='selecting',selR=-1,selC=-1,proc=false;
+let items={},hMode=false,bMode=false,lMode=false,cMode=false,rStamp=0;
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+
+// ============================================================
+// LOGIN
+// ============================================================
+function switchMode(m){
+  loginMode=m;
+  document.getElementById('mode-login').className='mode-btn '+(m==='login'?'on':'off');
+  document.getElementById('mode-reg').className='mode-btn '+(m==='register'?'on':'off');
+  document.getElementById('login-sub').textContent=m==='login'?'快乐三消，畅玩无限':'创建账号，开始冒险';
+  document.getElementById('cdiv').style.display=m==='register'?'':'none';
+  document.getElementById('crow').style.display=m==='register'?'':'none';
+  document.getElementById('rmrow').style.display=m==='login'?'':'none';
+  document.getElementById('login-btn').textContent=m==='login'?'登  录':'注  册';
+}
+function togglePwd(id,el){const i=document.getElementById(id);i.type=i.type==='password'?'text':'password';el.textContent=i.type==='password'?'👁':'🙈'}
+
+async function doLogin(){
+  const u=document.getElementById('luser').value.trim();
+  const p=document.getElementById('lpwd').value;
+  if(loginMode==='login'){
+    if(!u){toast('请输入用户名');return}
+    if(!p){toast('请输入密码');return}
+    const all=S.getO('all_players',[]);
+    const f=all.find(pl=>pl.username===u);
+    if(!f){toast('用户不存在，请先注册');return}
+    if(f.password!==p){toast('密码错误');return}
+    curUser=u;S.set('username',u);S.set('nickname',f.nickname);S.set('avatar',f.avatar);
+    S.setB('logged_in',true);
+    const rm=document.getElementById('rmpwd').checked;
+    S.setB('remember_pwd',rm);if(rm)S.set('password',p);else S.set('password','');
+    let ud=S.getO('user_'+u);
+    if(!ud){const nm=new UserModel();nm.username=u;nm.nickname=f.nickname;nm.avatar=f.avatar;ud=nm.toObj();S.setO('user_'+u,ud)}
+    userM=new UserModel(ud);
+    toast('登录成功！欢迎回来~');navigateTo('home');
+  }else{
+    const cp=document.getElementById('lcpwd').value;
+    if(!u){toast('请输入用户名（同时也是游戏昵称）');return}
+    if(u.length<2){toast('用户名至少2个字符（支持中文）');return}
+    if(p.length<6){toast('密码长度至少6位');return}
+    if(p!==cp){toast('两次密码不一致');return}
+    const all=S.getO('all_players',[]);
+    if(all.find(pl=>pl.username===u)){toast('用户名已被注册');return}
+    const np={username:u,password:p,nickname:u,avatar:'😊'};
+    all.push(np);S.setO('all_players',all);
+    const nm=new UserModel();nm.username=u;nm.nickname=u;nm.avatar='😊';
+    S.setO('user_'+u,nm.toObj());
+    toast('注册成功！直接点击登录即可');
+    switchMode('login');document.getElementById('luser').value=u;
+  }
+}
+
+(function init(){
+  const rm=S.getB('remember_pwd',false);
+  if(rm){document.getElementById('luser').value=S.get('username','');document.getElementById('lpwd').value=S.get('password','');document.getElementById('rmpwd').checked=true}
+  if(S.getB('logged_in',false)){
+    curUser=S.get('username','');
+    const ud=S.getO('user_'+curUser);
+    if(ud){userM=new UserModel(ud);navigateTo('home')}
+  }
+})();
+
+// ============================================================
+// HOME
+// ============================================================
+function loadHome(){if(!curUser)curUser=S.get('username','');const ud=S.getO('user_'+curUser);if(ud)userM=new UserModel(ud);else userM=new UserModel();items=S.getO('items',{})}
+function renderHome(){
+  if(!userM)return;
+  document.getElementById('h-av').textContent=S.get('avatar','😊');
+  document.getElementById('h-nick').textContent=S.get('nickname','新玩家');
+  document.getElementById('h-lv').textContent='Lv.'+userM.level;
+  document.getElementById('h-bal').textContent='💰'+userM.coins+' 💎'+userM.diamonds;
+  renderHomeTab();
+}
+function switchHomeTab(i){
+  htIdx=i;
+  document.querySelectorAll('#home-page .tab-item').forEach((el,j)=>el.classList.toggle('active',j===i));
+  renderHomeTab();
+}
+function renderHomeTab(){
+  const ct=document.getElementById('home-tab-content');
+  if(htIdx===0){ct.innerHTML=hMainTab();bindHomeEvents()}
+  else if(htIdx===1){ct.innerHTML=hLbTab()}
+  else if(htIdx===2){ct.innerHTML=hShopTab()}
+  else ct.innerHTML=hProfTab();
+}
+function hMainTab(){
+  const sw=C.BANNERS.map((b,i)=>`<div class="slide${i===0?' active':''}" style="background:${b.color}" onclick="openCheckin()"><div style="font-size:36px;margin-top:12px">${b.icon}</div><h3 style="font-size:18px;font-weight:700;margin-top:4px">${b.title}</h3><div style="font-size:12px;color:rgba(255,255,255,0.8);margin-top:3px">${b.sub}</div></div>`).join('');
+  const fs=[['🎮','开始游戏','#FFF0F5',"navigateTo('game')"],['🏆','排行榜','#F0F8FF',"switchHomeTab(1)"],['🛒','道具商城','#FFF8F0',"switchHomeTab(2)"],['👤','个人中心','#F5FFF5',"switchHomeTab(3)"],['📊','每日任务','#FFF5FF',"showTasks()"],['🎁','每日签到','#FFFDE8',"openCheckin()"],['💎','宝石矿场','#E8F5FF',"collectMine()"],['⚙️','游戏设置','#F5F5F5',"switchHomeTab(3)"]];
+  const fh=fs.map(f=>`<div class="func-item" style="background:${f[2]}" onclick="${f[3]}"><div class="fi">${f[0]}</div>${f[1]}</div>`).join('');
+  return `<div class="swiper-wrap" id="swiper">${sw}</div>
+  <div class="swiper-dots">${C.BANNERS.map((_,i)=>`<div class="dot${i===0?' active':''}" data-si="${i}"></div>`).join('')}</div>
+  <div class="section-title">功能菜单</div><div class="func-grid">${fh}</div>
+  <div class="section-title">精彩活动</div>
+  <div class="activity-row">
+    <div class="activity-card" style="background:#FF6B9D" onclick="navigateTo('game')"><div style="font-size:28px;margin-bottom:6px">🔥</div><div style="font-size:15px;font-weight:700">连续消除</div><div style="font-size:10px;color:rgba(255,255,255,0.75);margin-top:3px">挑战最高连击<br>每日3次机会</div></div>
+    <div class="activity-card" style="background:#FF9500" onclick="navigateTo('game')"><div style="font-size:28px;margin-bottom:6px">⭐</div><div style="font-size:15px;font-weight:700">积分挑战</div><div style="font-size:10px;color:rgba(255,255,255,0.75);margin-top:3px">冲分竞技<br>每日结算榜单奖励</div></div>
+  </div><div class="bottom-spacer"></div>`;
+}
+let _swTimer;
+function bindHomeEvents(){
+  let cur=0;const ds=document.querySelectorAll('#swiper+.swiper-dots .dot');
+  function go(i){cur=i;document.querySelectorAll('#swiper .slide').forEach((s,si)=>s.classList.toggle('active',si===i));ds.forEach((d,di)=>d.classList.toggle('active',di===i))}
+  ds.forEach(d=>{d.onclick=()=>{go(parseInt(d.dataset.si));clearInterval(_swTimer);_swTimer=setInterval(()=>go((cur+1)%C.BANNERS.length),3000)}});
+  _swTimer=setInterval(()=>go((cur+1)%C.BANNERS.length),3000);
+}
+function getToday(){return new Date().toDateString()}
+function openCheckin(){
+  const lastDate=S.get('chk_date','');
+  if(lastDate!==getToday()){S.setB('chk_today',false);S.set('chk_date',getToday())}
+  const day=S.getN('chk_day',1);const ci=S.getB('chk_today',false);
+  let h=`<div style="font-size:46px">🎁</div><div style="font-size:20px;font-weight:700;margin:6px 0">每日签到</div><div style="font-size:13px;color:#999;margin-bottom:14px">连续签到7天领取豪华大礼包</div><div class="ci-grid">`;
+  C.CHK.forEach(r=>{
+    let st='🔒';if(r.day<day||(r.day===day&&ci))st='✅';else if(r.day===day&&!ci)st='🎯';
+    h+=`<div class="ci-day${r.day===day&&!ci?' cur':''}${r.day<day?' done':''}"><div style="font-size:26px">${r.icon}</div><div style="font-weight:700;color:${r.day<=day?'#FF6B9D':'#CCC'};margin-top:3px">第${r.day}天</div><div style="color:#FF9500;font-size:9px">💰${r.coins}</div><div style="color:#4488FF;font-size:9px">💎${r.dia}</div><div style="font-size:14px;margin-top:2px">${st}</div></div>`;
+  });
+  h+=`</div>`;
+  if(!ci)h+=`<button class="btn btn-primary btn-md" style="width:82%;margin-top:14px;box-shadow:0 4px 12px rgba(255,107,157,0.3)" onclick="doCheckin()">🎯 立即签到（第${day}天）</button>`;
+  else h+=`<div style="font-size:16px;font-weight:700;color:#4CAF50;margin-top:14px">✅ 今日已签到</div>`;
+  h+=`<button class="btn btn-ghost btn-md" style="width:50%;margin:8px 0 10px" onclick="closeCheckin()">关闭</button>`;
+  document.getElementById('chk-card').innerHTML=h;document.getElementById('chk-overlay').classList.remove('hidden');
+}
+function closeCheckin(){document.getElementById('chk-overlay').classList.add('hidden')}
+function doCheckin(){
+  const day=S.getN('chk_day',1);const idx=day-1;if(idx<0||idx>=C.CHK.length)return;const r=C.CHK[idx];
+  if(!userM)loadHome();
+  userM.addCoins(r.coins);userM.addDia(r.dia);userM.addExp(C.EXP_CHK);
+  S.setN('chk_day',day>=7?1:day+1);S.setB('chk_today',true);S.set('chk_date',getToday());
+  S.setO('user_'+curUser,userM.toObj());
+  toast('签到成功！💰+'+r.coins+' 💎+'+r.dia);closeCheckin();renderHome();
+}
+function showTasks(){toast(C.TASKS.map(t=>t.icon+' '+t.name+': 进行中 ('+t.rc+'💰+'+t.rd+'💎)').join('\n'),3500)}
+function collectMine(){
+  if(S.getN('mine_collect',0)>=1){toast('矿场已收取过，升级后可再次收取');return}
+  const ml=S.getN('mine_lv',1);const earned=ml*3;
+  if(!userM)loadHome();userM.addDia(earned);
+  S.setN('diamonds',userM.diamonds);S.setN('mine_collect',1);
+  S.setO('user_'+curUser,userM.toObj());toast('收取了'+earned+'💎！');renderHome();
+}
+
+// Leaderboard
+let _lb=[];
+function hLbTab(){
+  if(!userM)loadHome();
+  const all=S.getO('all_players',[]);const es=[];
+  for(const p of all){const ud=S.getO('user_'+p.username);if(ud)es.push({username:p.username,nickname:p.nickname||p.username,avatar:p.avatar||'😊',score:ud.highScore||0,level:ud.level||1,stars:(ud.clearedLevels?ud.clearedLevels.length:0),mc:0})}
+  if(es.length===0)es.push({username:curUser,nickname:S.get('nickname','我'),avatar:S.get('avatar','😊'),score:0,level:1,stars:0,mc:0});
+  _lb=[rankE([...es],'stars').slice(0,20),rankE([...es],'score').slice(0,20),rankE([...es],'level').slice(0,20)];
+  return `<div class="lb-tabs" id="lbt"><div class="lb-tab active" onclick="swLb(0)">闯关星级</div><div class="lb-tab" onclick="swLb(1)">积分挑战</div><div class="lb-tab" onclick="swLb(2)">最高连击</div></div><div class="lb-list" id="lbl">${renderLb(_lb[0],'stars')}</div>`;
+}
+function rankE(d,by){
+  d.sort((a,b)=>{let va,vb;if(by==='stars'){va=a.stars;vb=b.stars}else if(by==='score'){va=a.score;vb=b.score}else{va=a.level;vb=b.level};return vb-va});
+  d.forEach((e,i)=>e.rank=i+1);return d;
+}
+function renderLb(d,type){
+  return d.map((item,idx)=>{
+    const rc=idx===0?'gold':idx===1?'silver':idx===2?'bronze':'';
+    const v=type==='stars'?'⭐'+item.stars:type==='combo'?'🔥'+item.mc+'连':item.score+'分';
+    return `<div class="lb-item${item.username===curUser?' me':''}"><div class="lb-rank${rc?' '+rc:''}">${item.rank}</div><div class="lb-av">${item.avatar}</div><div class="lb-info"><div class="name">${item.nickname}</div><div class="lv">Lv.${item.level}</div></div><div class="lb-score">${v}</div></div>`;
+  }).join('');
+}
+function swLb(i){
+  document.querySelectorAll('#lbt .lb-tab').forEach((t,j)=>t.classList.toggle('active',j===i));
+  const ts=['stars','score','combo'];document.getElementById('lbl').innerHTML=renderLb(_lb[i],ts[i]);
+}
+
+// Shop
+function hShopTab(){
+  if(!userM)loadHome();items=S.getO('items',{});
+  return `<div style="padding:8px 16px;display:flex;justify-content:flex-end"><span class="shop-bal">💰${userM.coins} 💎${userM.diamonds}</span></div>
+  <div style="text-align:center;font-size:14px;color:#999;padding:8px 0">—  金币区  —</div><div class="shop-grid">${rShopItems(C.SCOINS)}</div>
+  <div style="text-align:center;font-size:14px;color:#999;padding:16px 0 8px">—  钻石区  —</div><div class="shop-grid">${rShopItems(C.SDIA)}</div><div class="bottom-spacer"></div>`;
+}
+function rShopItems(arr){
+  return arr.map(it=>{
+    const ok=(it.cur==='coin'?userM.coins:userM.diamonds)>=it.price;
+    return `<div class="shop-item"><div class="sii">${it.icon}</div><div class="sin">${it.name}</div><div class="sid">${it.desc}</div><div class="sio">拥有:${items[it.id]||0}</div><button class="sib ${ok?'ok':'no'}" ${ok?'':'disabled'} onclick="buyItem(${it.id})">${it.cur==='coin'?'💰':'💎'}${it.price}</button></div>`;
+  }).join('');
+}
+function buyItem(id){
+  if(!userM)loadHome();
+  const all=[...C.SCOINS,...C.SDIA];const it=all.find(i=>i.id===id);if(!it)return;
+  if(it.cur==='coin'){if(userM.coins<it.price){toast('金币不足！');return}userM.addCoins(-it.price)}
+  else{if(userM.diamonds<it.price){toast('钻石不足！');return}userM.addDia(-it.price)}
+  items[it.id]=(items[it.id]||0)+1;
+  S.setN('coins',userM.coins);S.setN('diamonds',userM.diamonds);S.setO('items',items);S.setO('user_'+curUser,userM.toObj());
+  toast('购买成功: '+it.name);renderHome();
+}
+
+// Profile Tab
+function hProfTab(){
+  if(!userM)loadHome();const ep=Math.min(100,Math.round(userM.exp/userM.getExpNext()*100));
+  return `<div style="padding:20px 16px">
+  <div style="display:flex;align-items:center;gap:14px"><div style="font-size:44px;width:72px;height:72px;background:#FFF0F5;border-radius:36px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(255,107,157,0.2)">${S.get('avatar','😊')}</div>
+  <div><div style="font-size:20px;font-weight:700;color:#333">${S.get('nickname','新玩家')}</div><div style="font-size:13px;color:#999">Lv.${userM.level} · 消消乐达人</div>
+  <div class="profile-exp"><div class="profile-exp-fill" style="width:${ep}%"></div></div><div style="font-size:10px;color:#CCC">EXP ${userM.exp}/${userM.getExpNext()}</div></div>
+  <div style="flex:1"></div><button class="btn btn-sm" style="background:#FFF0F5;color:#FF6B9D" onclick="navigateTo('profile')">编辑</button></div>
+  <div style="display:flex;background:#fff;border-radius:12px;padding:12px 0;margin-top:16px;box-shadow:var(--shadow-sm);justify-content:space-around">
+  <div class="stat-col"><div class="si">🏆</div><div class="sv">${userM.highScore}</div><div class="sl">最高分</div></div>
+  <div class="stat-col"><div class="si">🎯</div><div class="sv">${userM.totalCleared}</div><div class="sl">通关数</div></div>
+  <div class="stat-col"><div class="si">💰</div><div class="sv">${userM.coins}</div><div class="sl">金币</div></div>
+  <div class="stat-col"><div class="si">💎</div><div class="sv">${userM.diamonds}</div><div class="sl">钻石</div></div></div>
+  <div style="margin-top:12px">${rSetRow('🔊','游戏音效','sound_on')}${rSetRow('📳','震动反馈','vibrate_on')}
+  <div class="setting-row" onclick="toast('该游戏为小姜同学的练手项目',2500)"><span class="sr">ℹ️</span>关于应用<span style="flex:1"></span><span style="color:#CCC">›</span></div>
+  <button class="btn btn-danger-line btn-md" style="width:100%;margin-top:8px" onclick="clearData()">清除数据</button>
+  <button class="btn btn-danger btn-lg" style="width:100%;margin-top:12px;box-shadow:0 4px 12px rgba(255,82,82,0.3)" onclick="logout()">退出登录</button></div></div>`;
+}
+function rSetRow(ic,lb,key){
+  const on=S.getB(key,true);
+  return `<div class="setting-row"><span class="sr">${ic}</span>${lb}<span style="flex:1"></span><label class="toggle-wrap"><input type="checkbox" ${on?'checked':''} onchange="S.setB('${key}',this.checked)"><span class="sl"></span></label></div>`;
+}
+function clearData(){if(confirm('确定清除所有游戏数据？')){S.clr();toast('已清除数据');setTimeout(()=>{userM=new UserModel();renderHome()},500)}}
+function logout(){S.setB('logged_in',false);curUser=null;userM=null;navigateTo('login')}
+
+// ============================================================
+// GAME
+// ============================================================
+function renderLevelSelect(){
+  gm=new GameModel();if(!userM)loadHome();gState='selecting';
+  document.getElementById('game-ls').style.display='';document.getElementById('game-play').style.display='none';
+  document.getElementById('game-result').classList.add('hidden');document.getElementById('game-pause').classList.add('hidden');
+  let h=`<div class="page-head"><button class="btn btn-sm" style="background:#FFF0F5;color:#FF6B9D" onclick="navigateTo('home')">← 返回</button><div class="ph-title">选择关卡</div><div class="ph-spc"></div></div><div class="scroll-area"><div class="level-grid">`;
+  C.LEVELS.forEach(lv=>{
+    const cl=userM.isCleared(lv.id),un=userM.isUnlocked(lv.id);
+    h+=`<div class="level-card${cl?' cleared':''}${!un?' locked':''}" onclick="${un?`startLevel(${lv.id})`:'\'\''}"><div class="lc-icon">${cl?'✅':un?'🔓':'🔒'}</div><div class="lc-name">第${lv.id}关</div><div class="lc-desc">目标: ${lv.ts}分 / ${lv.moves}步</div></div>`;
+  });
+  h+=`</div></div>`;document.getElementById('game-ls').innerHTML=h;
+}
+function startLevel(lid){
+  if(!gm)gm=new GameModel();gm.setLv(lid);gm.score=0;gm.initBrd();
+  selR=-1;selC=-1;curCombo=0;maxCombo=0;hMode=bMode=lMode=cMode=false;
+  items=S.getO('items',{});proc=false;rStamp=0;gState='playing';
+  document.getElementById('game-ls').style.display='none';document.getElementById('game-play').style.display='flex';
+  document.getElementById('game-result').classList.add('hidden');document.getElementById('game-pause').classList.add('hidden');
+  renderGP();
+}
+function renderGP(){
+  const g=gm,s=g.score,t=g.ts,m=g.moves;
+  const pct=Math.min(100,Math.round(t?Math.min(s,t)/t*100:0));
+  let h=`<div class="game-top"><button class="gt-btn gt-back" onclick="backToLs()">← 关卡</button><div class="gt-title">第${g.lv}关</div><button class="gt-btn gt-ghost" onclick="pauseGame()">⏸</button><button class="gt-btn gt-ghost" onclick="resetGame()">🔄</button></div>
+  <div class="game-stats"><div class="gs-item"><div class="gs-l">得分</div><div class="gs-v" style="color:#FF6B9D">${s}</div></div><div class="gs-item"><div class="gs-l">目标</div><div class="gs-v" style="color:#FF9500">${t}</div></div><div class="gs-item"><div class="gs-l">步数</div><div class="gs-v" style="color:${m<=5?'#FF5252':'#4CAF50'}">${m}</div></div><div class="gs-item"><div class="gs-l">连击</div><div class="gs-v" style="color:#CC44CC">${curCombo}</div></div></div>
+  <div class="game-progress"><div class="game-progress-fill" style="width:${pct}%"></div></div>
+  <div class="game-items">${rib('👟','+5步',1,'#FFF0F5',false)}${rib('🔨','锤子',2,'#FFF8F0',hMode)}${rib('💣','炸弹',4,'#F0F8FF',bMode)}${rib('⚡','闪电',5,'#FFFDE8',lMode)}${rib('✚','十字',6,'#F5FFF5',cMode)}</div>`;
+  if(hMode||bMode||lMode||cMode){h+=`<div class="item-hint">${hMode?'🔨 点击消除所有同色棋子':bMode?'💣 点击消除整行':lMode?'⚡ 点击消除整列':'✚ 点击消除十字范围'}</div>`}
+  h+=`<div class="game-board-wrap"><div class="game-board" id="gb">`;
+  for(let r=0;r<C.BR;r++){for(let c=0;c<C.BC;c++){const gem=g.brd[r][c];if(!gem)continue;const sel=selR===r&&selC===c,isP=gem.type>=C.BOMB;
+  h+=`<div class="gem${sel?' sel':''}${gem.matched?' match':''}${isP?' pow':''}${gem.isNew?' new':''}" style="background:${C.COLORS[gem.type]}" data-r="${r}" data-c="${c}"><span style="font-size:${isP?24:18}px;color:${isP?'#fff':'#333'};opacity:${gem.matched?0:1}">${C.ICONS[gem.type]}</span>${sel?'<span style="position:absolute;top:1px;right:3px;font-size:10px">✨</span>':''}</div>`;}}
+  h+=`</div></div>`;
+  document.getElementById('game-play').innerHTML=h;
+  bindBoard();
+}
+function rib(ic,lb,id,bg,on){const cnt=items[id]||0;return`<div class="gib${on?' on':''}" onclick="toggleIMode(${id})"><div class="gib-i">${ic}</div><div>${lb}</div><div class="gib-c">${cnt}</div></div>`}
+
+function bindBoard(){
+  const gems=document.querySelectorAll('#gb .gem');
+  gems.forEach(gem=>{
+    gem.onclick=function(){if(proc||gState!=='playing')return;const r=parseInt(this.dataset.r),c=parseInt(this.dataset.c);onGemClick(r,c)};
+    let sx,sy;
+    gem.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY});
+    gem.addEventListener('touchend',function(e){if(sx===undefined)return;const r=parseInt(this.dataset.r),c=parseInt(this.dataset.c);handleDrag(r,c,e.changedTouches[0].clientX-sx,e.changedTouches[0].clientY-sy);sx=undefined;sy=undefined});
+    gem.addEventListener('mousedown',e=>{sx=e.clientX;sy=e.clientY});
+    gem.addEventListener('mouseup',function(e){if(sx===undefined)return;const r=parseInt(this.dataset.r),c=parseInt(this.dataset.c),dx=e.clientX-sx,dy=e.clientY-sy;if(Math.abs(dx)>5||Math.abs(dy)>5)handleDrag(r,c,dx,dy);sx=undefined;sy=undefined});
+  });
+}
+function handleDrag(r,c,dx,dy){
+  if(proc||gState!=='playing'||hMode||bMode||lMode||cMode)return;
+  let tr=r,tc=c;
+  if(Math.abs(dx)>Math.abs(dy)){if(dx>18&&c<C.BC-1)tc=c+1;else if(dx<-18&&c>0)tc=c-1}
+  else{if(dy>18&&r<C.BR-1)tr=r+1;else if(dy<-18&&r>0)tr=r-1}
+  if(tr!==r||tc!==c){selR=-1;selC=-1;doSwap(r,c,tr,tc)}else{selR=-1;selC=-1}
+}
+function onGemClick(r,c){
+  if(hMode||bMode||lMode||cMode){useItem(r,c);return}
+  if(selR>=0&&selC>=0){
+    if(selR===r&&selC===c){selR=-1;selC=-1;renderGP();return}
+    if(Math.abs(selR-r)+Math.abs(selC-c)===1){doSwap(selR,selC,r,c);selR=-1;selC=-1}else{selR=r;selC=c;renderGP()}
+  }else{selR=r;selC=c;renderGP()}
+}
+
+async function doSwap(r1,c1,r2,c2){
+  proc=true;const g1=gm.brd[r1][c1],g2=gm.brd[r2][c2];if(!g1||!g2){proc=false;return}
+  gm.swap(g1,g2);const m=gm.findMatches();
+  if(m.length===0){await delay(200);gm.swap(g1,g2);renderGP();proc=false;return}
+  gm.useMove();curCombo=0;renderGP();await procChain();renderGP();await checkEnd();proc=false;
+}
+async function procChain(){
+  let m=gm.findMatches();
+  while(m.length>0){
+    curCombo++;if(curCombo>maxCombo)maxCombo=curCombo;
+    m.forEach(g=>g.matched=true);
+    const gained=gm.calcScore(m.length);renderGP();showFloat(gained);
+    await delay(350);gm.removeAndDrop();renderGP();
+    await delay(300);
+    for(let r=0;r<C.BR;r++)for(let c=0;c<C.BC;c++)if(gm.brd[r][c])gm.brd[r][c].isNew=false;
+    renderGP();m=gm.findMatches();
+  }
+  curCombo=0;
+}
+function showFloat(sc){
+  const e=document.createElement('div');e.className='score-pop';e.textContent='+'+sc;
+  const b=document.getElementById('gb');if(b){e.style.left='50%';e.style.top='45%';b.appendChild(e);setTimeout(()=>e.remove(),800)}
+}
+async function checkEnd(){
+  if(gm.isWin())await onWin();
+  else if(gm.isLose()){gState='lose';showResult('😢','步数用完','得分: '+gm.score+' / 目标: '+gm.ts,true)}
+  else if(!gm.hasMoves()){gm.initBrd();renderGP()}
+}
+async function onWin(){
+  gState='win';const lv=C.LEVELS[gm.lv-1],cr=lv.ts*10,dr=Math.floor(lv.ts/10),eg=C.EXP_CLR+gm.lv*5;
+  if(!userM)loadHome();userM.addCoins(cr);userM.addDia(dr);userM.unlockLv(gm.lv);userM.updHS(gm.score);
+  const lu=userM.addExp(eg);S.setO('user_'+curUser,userM.toObj());S.setN('coins',userM.coins);S.setN('diamonds',userM.diamonds);S.setN('high_score',userM.highScore);
+  showResult('🎉','恭喜通关！','得分: '+gm.score+'\n💰 +'+cr+'  💎 +'+dr+'\n经验 +'+eg+(lu>0?'\n等级提升！Lv.'+userM.level:''),true);
+}
+function showResult(ic,title,sub,showRetry){
+  document.getElementById('go-card').innerHTML=`<div class="go-icon">${ic}</div><div class="go-title">${title}</div><div class="go-sub">${sub}</div><div class="btn-row">${showRetry?'<button class="btn btn-primary btn-md" onclick="retryGame()">重新挑战</button>':''}<button class="btn btn-outline btn-md" onclick="backToLs()">返回关卡</button></div>`;
+  document.getElementById('game-result').classList.remove('hidden');
+}
+function retryGame(){document.getElementById('game-result').classList.add('hidden');gm.reset();selR=-1;selC=-1;curCombo=0;maxCombo=0;hMode=bMode=lMode=cMode=false;proc=false;gState='playing';renderGP()}
+function backToLs(){document.getElementById('game-result').classList.add('hidden');document.getElementById('game-pause').classList.add('hidden');proc=false;selR=-1;selC=-1;hMode=bMode=lMode=cMode=false;renderLevelSelect()}
+function resetGame(){if(proc)return;gm.reset();selR=-1;selC=-1;curCombo=0;maxCombo=0;hMode=bMode=lMode=cMode=false;gState='playing';renderGP()}
+function pauseGame(){gState='paused';document.getElementById('game-pause').classList.remove('hidden')}
+function resumeGame(){gState='playing';document.getElementById('game-pause').classList.add('hidden')}
+
+function toggleIMode(id){
+  if(proc||gState!=='playing')return;
+  if(id===1){if((items[1]||0)>0){items[1]=Math.max(0,items[1]-1);gm.moves+=5;S.setO('items',items);renderGP()}return}
+  if((items[id]||0)<=0)return;
+  if(id===2){hMode=!hMode;bMode=lMode=cMode=false}else if(id===4){bMode=!bMode;hMode=lMode=cMode=false}else if(id===5){lMode=!lMode;hMode=bMode=cMode=false}else if(id===6){cMode=!cMode;hMode=bMode=lMode=false}
+  renderGP();
+}
+
+async function useItem(r,c){if(proc)return;proc=true;
+  if(hMode){const tt=gm.brd[r][c]?.type;if(tt!==undefined){for(let rr=0;rr<C.BR;rr++)for(let cc=0;cc<C.BC;cc++){const g=gm.brd[rr][cc];if(g&&g.type===tt)g.matched=true}}hMode=false;items[2]=Math.max(0,(items[2]||0)-1)}
+  else if(bMode){for(let cc=0;cc<C.BC;cc++){const g=gm.brd[r][cc];if(g)g.matched=true}bMode=false;items[4]=Math.max(0,(items[4]||0)-1)}
+  else if(lMode){for(let rr=0;rr<C.BR;rr++){const g=gm.brd[rr][c];if(g)g.matched=true}lMode=false;items[5]=Math.max(0,(items[5]||0)-1)}
+  else if(cMode){for(let cc=0;cc<C.BC;cc++){const g=gm.brd[r][cc];if(g)g.matched=true}for(let rr=0;rr<C.BR;rr++){const g=gm.brd[rr][c];if(g)g.matched=true}cMode=false;items[6]=Math.max(0,(items[6]||0)-1)}
+  S.setO('items',items);
+  for(let rr=0;rr<C.BR;rr++)for(let cc=0;cc<C.BC;cc++){const g=gm.brd[rr][cc];if(!g||!g.matched)continue;if(g.type===C.BOMB){for(let ccc=0;ccc<C.BC;ccc++){const gg=gm.brd[rr][ccc];if(gg&&!gg.matched)gg.matched=true}}else if(g.type===C.LIGHT){for(let rrr=0;rrr<C.BR;rrr++){const gg=gm.brd[rrr][cc];if(gg&&!gg.matched)gg.matched=true}}}
+  let total=0;for(let rr=0;rr<C.BR;rr++)for(let cc=0;cc<C.BC;cc++)if(gm.brd[rr][cc]?.matched)total++;
+  if(total>0){const gained=Math.floor(total*C.SCORE_PER_GEM);gm.score+=gained;showFloat(gained)}
+  renderGP();await delay(350);gm.removeAndDrop();renderGP();await delay(300);
+  for(let rr=0;rr<C.BR;rr++)for(let cc=0;cc<C.BC;cc++)if(gm.brd[rr][cc])gm.brd[rr][cc].isNew=false;
+  renderGP();await procChain();renderGP();await checkEnd();proc=false;
+}
+
+// ============================================================
+// STANDALONE PAGES
+// ============================================================
+function renderLbPage(){
+  const all=S.getO('all_players',[]);const es=[];for(const p of all){const ud=S.getO('user_'+p.username);if(ud)es.push({username:p.username,nickname:p.nickname||p.username,avatar:p.avatar||'😊',score:ud.highScore||0,level:ud.level||1,stars:(ud.clearedLevels?ud.clearedLevels.length:0),mc:0})}
+  if(es.length===0)es.push({username:curUser||'',nickname:S.get('nickname','我'),avatar:S.get('avatar','😊'),score:0,level:1,stars:0,mc:0});
+  window._ld=[rankE([...es],'stars').slice(0,15),rankE([...es],'score').slice(0,15),rankE([...es],'level').slice(0,15)];
+  const el=document.getElementById('leaderboard-page');
+  el.innerHTML=`<div class="page-head"><button class="btn btn-sm" style="background:#FFF0F5;color:#FF6B9D" onclick="navigateTo('home')">← 返回</button><div class="ph-title">排行榜</div><div class="ph-spc"></div></div><div class="lb-tabs" id="lbt2"><div class="lb-tab active" onclick="swLb2(0)">闯关星级</div><div class="lb-tab" onclick="swLb2(1)">积分挑战</div><div class="lb-tab" onclick="swLb2(2)">最高连击</div></div><div class="lb-list" id="lbl2">${renderLb(window._ld[0],'stars')}</div>`;
+}
+function swLb2(i){
+  document.querySelectorAll('#lbt2 .lb-tab').forEach((t,j)=>t.classList.toggle('active',j===i));
+  document.getElementById('lbl2').innerHTML=renderLb(window._ld[i],['stars','score','combo'][i]);
+}
+
+function renderProfPage(){
+  if(!userM)loadHome();const ep=Math.min(100,Math.round(userM.exp/userM.getExpNext()*100));
+  const el=document.getElementById('profile-page');
+  el.innerHTML=`<div class="page-head"><button class="btn btn-sm" id="pe-back" style="background:#FFF0F5;color:#FF6B9D" onclick="profBack()">← 返回</button><div class="ph-title">个人资料</div>
+  <button class="btn btn-sm" id="pe-save" style="background:#4CAF50;color:#fff;display:none" onclick="saveProf()">保存</button>
+  <button class="btn btn-sm" id="pe-edit" style="background:#FFF0F5;color:#FF6B9D" onclick="startEditProf()">编辑</button></div>
+  <div class="scroll-area" style="padding:0 16px;text-align:center" id="prof-body">
+  <div id="prof-view">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;text-align:left">
+    <div class="profile-av">${S.get('avatar','😊')}</div>
+    <div><div style="font-size:20px;font-weight:700;color:#333">${S.get('nickname','新玩家')}</div><div style="font-size:13px;color:#999">Lv.${userM.level} · 消消乐达人</div>
+    <div class="profile-exp"><div class="profile-exp-fill" style="width:${ep}%"></div></div><div style="font-size:10px;color:#CCC">EXP ${userM.exp}/${userM.getExpNext()}</div></div></div>
+    <div style="display:flex;background:#fff;border-radius:12px;padding:12px 0;box-shadow:var(--shadow-sm);justify-content:space-around;margin-bottom:12px">
+    <div class="stat-col"><div class="si">🏆</div><div class="sv">${userM.highScore}</div><div class="sl">最高分</div></div>
+    <div class="stat-col"><div class="si">🎯</div><div class="sv">${userM.totalCleared}</div><div class="sl">通关数</div></div>
+    <div class="stat-col"><div class="si">💰</div><div class="sv">${userM.coins}</div><div class="sl">金币</div></div>
+    <div class="stat-col"><div class="si">💎</div><div class="sv">${userM.diamonds}</div><div class="sl">钻石</div></div></div>
+    ${rSetRow('🔊','游戏音效','sound_on')}${rSetRow('📳','震动反馈','vibrate_on')}
+    <div class="setting-row" onclick="toast('该游戏为小姜同学的练手项目',2500)"><span class="sr">ℹ️</span>关于应用<span style="flex:1"></span><span style="color:#CCC">›</span></div>
+    <button class="btn btn-danger btn-lg" style="margin-top:16px;box-shadow:0 4px 12px rgba(255,82,82,0.3)" onclick="logout()">退出登录</button></div>
+  <div id="prof-edit" style="display:none">
+    <div id="pe-av" style="font-size:44px;width:72px;height:72px;background:#FFF0F5;border-radius:36px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;box-shadow:0 3px 12px rgba(255,107,157,0.2)">${S.get('avatar','😊')}</div>
+    <div style="font-size:11px;color:#999;margin-bottom:6px">点击下方头像选择</div>
+    <div class="avatar-grid" style="margin:0 auto">${C.AVATARS.map(a=>`<div class="avatar-opt${S.get('avatar','😊')===a?' sel':''}" onclick="selectAv('${a}')">${a}</div>`).join('')}</div>
+    <input id="pe-nick" style="width:75%;height:42px;background:#F5F5F5;border:none;border-radius:10px;padding:0 14px;font-size:16px;margin-top:12px;text-align:center;outline:none" value="${S.get('nickname','新玩家')}" placeholder="输入新昵称">
+  </div></div>`;
+  window._editP=false;window._selAv=S.get('avatar','😊');
+}
+function profBack(){if(window._editP){window._editP=false;renderProfPage()}else navigateTo('home')}
+function startEditProf(){window._editP=true;document.getElementById('prof-view').style.display='none';document.getElementById('prof-edit').style.display='block';document.getElementById('pe-edit').style.display='none';document.getElementById('pe-save').style.display=''}
+function selectAv(a){window._selAv=a;document.getElementById('pe-av').textContent=a;document.querySelectorAll('#prof-edit .avatar-opt').forEach(el=>el.classList.toggle('sel',el.textContent===a))}
+async function saveProf(){
+  const nn=document.getElementById('pe-nick').value.trim();
+  if(!nn){toast('昵称不能为空');return}
+  if(nn!==S.get('nickname','')){
+    const all=S.getO('all_players',[]);
+    if(all.find(p=>p.username!==curUser&&p.nickname===nn)){toast('昵称已被使用');return}
+    S.set('nickname',nn);all.forEach(p=>{if(p.username===curUser)p.nickname=nn});S.setO('all_players',all);userM.nickname=nn;
+  }
+  if(window._selAv!==S.get('avatar','😊')){S.set('avatar',window._selAv);const all=S.getO('all_players',[]);all.forEach(p=>{if(p.username===curUser)p.avatar=window._selAv});S.setO('all_players',all);userM.avatar=window._selAv}
+  S.setO('user_'+curUser,userM.toObj());toast('修改已保存');window._editP=false;renderProfPage();
+}
+
+function renderShopPg(){
+  if(!userM)loadHome();items=S.getO('items',{});
+  const el=document.getElementById('shop-page');
+  el.innerHTML=`<div class="page-head"><button class="btn btn-sm" style="background:#FFF0F5;color:#FF6B9D" onclick="navigateTo('home')">← 返回</button><div class="ph-title">道具商城</div><span class="shop-bal">💰${userM.coins} 💎${userM.diamonds}</span></div>
+  <div class="scroll-area" style="text-align:center"><div style="font-size:14px;color:#999;padding:8px 0">—  金币区  —</div><div class="shop-grid">${rShopItems(C.SCOINS)}</div>
+  <div style="font-size:14px;color:#999;padding:16px 0 8px">—  钻石区  —</div><div class="shop-grid">${rShopItems(C.SDIA)}</div><div class="bottom-spacer"></div></div>`;
+}
+</script>
+</body>
+</html>
