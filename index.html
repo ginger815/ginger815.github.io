@@ -556,10 +556,10 @@ function switchHomeTab(i){
   document.querySelectorAll('#home-page .tab-item').forEach((el,j)=>el.classList.toggle('active',j===i));
   renderHomeTab();
 }
-async function renderHomeTab(){
+function renderHomeTab(){
   const ct=document.getElementById('home-tab-content');
   if(htIdx===0){ct.innerHTML=hMainTab();bindHomeEvents()}
-  else if(htIdx===1){await hLbTab()}
+  else if(htIdx===1){hLbTab()}
   else if(htIdx===2){ct.innerHTML=hShopTab()}
   else ct.innerHTML=hProfTab();
 }
@@ -621,17 +621,22 @@ function collectMine(){
 
 // Leaderboard
 let _lb=[];
-async function hLbTab(){
+function hLbTab(){
   if(!userM)loadHome();
-  let es=[];
-  // 尝试从服务端获取排行榜
-  if(apiOnline||await Api.health()){try{const d=await Api.getLeaderboard('stars');es=d.leaderboard||[];const d2=await Api.getLeaderboard('score');const d3=await Api.getLeaderboard('combo');_lb=[es.slice(0,20),d2.leaderboard.slice(0,20),d3.leaderboard.slice(0,20)];document.getElementById('home-tab-content').innerHTML=`<div class="lb-tabs" id="lbt"><div class="lb-tab active" onclick="swLb(0)">闯关星级</div><div class="lb-tab" onclick="swLb(1)">积分挑战</div><div class="lb-tab" onclick="swLb(2)">最高连击</div></div><div class="lb-list" id="lbl">${renderLb(_lb[0],'stars')}</div>`;return;}catch(e){/* fallback */}}
-  // 本地排行
+  // 1. 立即用本地数据渲染（绝不会返回 Promise）
   const all=S.getO('all_players',[]);
+  const es=[];
   for(const p of all){const ud=S.getO('user_'+p.username);if(ud)es.push({username:p.username,nickname:p.nickname||p.username,avatar:p.avatar||'😊',score:ud.highScore||0,level:ud.level||1,stars:(ud.clearedLevels?ud.clearedLevels.length:0),mc:0})}
   if(es.length===0)es.push({username:curUser,nickname:S.get('nickname','我'),avatar:S.get('avatar','😊'),score:0,level:1,stars:0,mc:0});
   _lb=[rankE([...es],'stars').slice(0,20),rankE([...es],'score').slice(0,20),rankE([...es],'level').slice(0,20)];
   document.getElementById('home-tab-content').innerHTML=`<div class="lb-tabs" id="lbt"><div class="lb-tab active" onclick="swLb(0)">闯关星级</div><div class="lb-tab" onclick="swLb(1)">积分挑战</div><div class="lb-tab" onclick="swLb(2)">最高连击</div></div><div class="lb-list" id="lbl">${renderLb(_lb[0],'stars')}</div>`;
+  // 2. 异步尝试从服务端刷新（成功后静默更新 DOM）
+  if(apiOnline){
+    Promise.all([Api.getLeaderboard('stars'),Api.getLeaderboard('score'),Api.getLeaderboard('combo')]).then(([d1,d2,d3])=>{
+      _lb=[(d1.leaderboard||[]).slice(0,20),(d2.leaderboard||[]).slice(0,20),(d3.leaderboard||[]).slice(0,20)];
+      const lbl=document.getElementById('lbl');if(lbl)lbl.innerHTML=renderLb(_lb[0],'stars');
+    }).catch(()=>{});
+  }
 }
 function rankE(d,by){
   d.sort((a,b)=>{let va,vb;if(by==='stars'){va=a.stars;vb=b.stars}else if(by==='score'){va=a.score;vb=b.score}else{va=a.level;vb=b.level};return vb-va});
@@ -834,13 +839,20 @@ async function useItem(r,c){if(proc)return;proc=true;
 // STANDALONE PAGES
 // ============================================================
 function renderLbPage(){
-  fetchLbPage();
-}
-async function fetchLbPage(){
-  let starLB=[],scoreLB=[],comboLb=[];
-  if(apiOnline||await Api.health()){try{const d1=await Api.getLeaderboard('stars');starLB=d1.leaderboard.slice(0,15);const d2=await Api.getLeaderboard('score');scoreLB=d2.leaderboard.slice(0,15);const d3=await Api.getLeaderboard('combo');comboLb=d3.leaderboard.slice(0,15);window._ld=[starLB,scoreLB,comboLb];}catch(e){/* fallback */}}
-  if(starLB.length===0){const all=S.getO('all_players',[]);const es=[];for(const p of all){const ud=S.getO('user_'+p.username);if(ud)es.push({username:p.username,nickname:p.nickname||p.username,avatar:p.avatar||'😊',score:ud.highScore||0,level:ud.level||1,stars:(ud.clearedLevels?ud.clearedLevels.length:0),mc:0})}if(es.length===0)es.push({username:curUser||'',nickname:S.get('nickname','我'),avatar:S.get('avatar','😊'),score:0,level:1,stars:0,mc:0});window._ld=[rankE([...es],'stars').slice(0,15),rankE([...es],'score').slice(0,15),rankE([...es],'level').slice(0,15)]}
-  const el=document.getElementById('leaderboard-page');el.innerHTML=`<div class="page-head"><button class="btn btn-sm" style="background:#FFF0F5;color:#FF6B9D" onclick="navigateTo('home')">← 返回</button><div class="ph-title">排行榜</div><div class="ph-spc"></div></div><div class="lb-tabs" id="lbt2"><div class="lb-tab active" onclick="swLb2(0)">闯关星级</div><div class="lb-tab" onclick="swLb2(1)">积分挑战</div><div class="lb-tab" onclick="swLb2(2)">最高连击</div></div><div class="lb-list" id="lbl2">${renderLb(window._ld[0],'stars')}</div>`;
+  const el=document.getElementById('leaderboard-page');
+  // 1. 立即用本地数据渲染
+  const all=S.getO('all_players',[]);const es=[];
+  for(const p of all){const ud=S.getO('user_'+p.username);if(ud)es.push({username:p.username,nickname:p.nickname||p.username,avatar:p.avatar||'😊',score:ud.highScore||0,level:ud.level||1,stars:(ud.clearedLevels?ud.clearedLevels.length:0),mc:0})}
+  if(es.length===0)es.push({username:curUser||'',nickname:S.get('nickname','我'),avatar:S.get('avatar','😊'),score:0,level:1,stars:0,mc:0});
+  window._ld=[rankE([...es],'stars').slice(0,15),rankE([...es],'score').slice(0,15),rankE([...es],'level').slice(0,15)];
+  el.innerHTML=`<div class="page-head"><button class="btn btn-sm" style="background:#FFF0F5;color:#FF6B9D" onclick="navigateTo('home')">← 返回</button><div class="ph-title">排行榜</div><div class="ph-spc"></div></div><div class="lb-tabs" id="lbt2"><div class="lb-tab active" onclick="swLb2(0)">闯关星级</div><div class="lb-tab" onclick="swLb2(1)">积分挑战</div><div class="lb-tab" onclick="swLb2(2)">最高连击</div></div><div class="lb-list" id="lbl2">${renderLb(window._ld[0],'stars')}</div>`;
+  // 2. 异步从服务端刷新
+  if(apiOnline){
+    Promise.all([Api.getLeaderboard('stars'),Api.getLeaderboard('score'),Api.getLeaderboard('combo')]).then(([d1,d2,d3])=>{
+      window._ld=[(d1.leaderboard||[]).slice(0,15),(d2.leaderboard||[]).slice(0,15),(d3.leaderboard||[]).slice(0,15)];
+      const lbl=document.getElementById('lbl2');if(lbl)lbl.innerHTML=renderLb(window._ld[0],'stars');
+    }).catch(()=>{});
+  }
 }
 function swLb2(i){
   document.querySelectorAll('#lbt2 .lb-tab').forEach((t,j)=>t.classList.toggle('active',j===i));
