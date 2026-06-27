@@ -397,19 +397,23 @@ let apiToken=localStorage.getItem('mg_api_token')||'';
 let apiOnline=false;
 
 const Api={
+  _lastHealthFail:0, // 上次健康检查失败的时间戳
+  _healthTimeout:3000, // 健康检查超时（毫秒）
   setToken(t){apiToken=t;if(t)localStorage.setItem('mg_api_token',t);else localStorage.removeItem('mg_api_token');},
   async fetch(path,opts={}){
     const headers={'Content-Type':'application/json'};
     if(apiToken)headers['Authorization']='Bearer '+apiToken;
-    const res=await fetch(API_URL+path,{headers,...opts,body:opts.body?JSON.stringify(opts.body):undefined});
-    const data=await res.json();
-    if(!res.ok&&data.error)throw new Error(data.error);
-    return data;
+    const ctrl=new AbortController();
+    const timer=setTimeout(()=>ctrl.abort(),opts.timeout||5000);
+    try{const res=await fetch(API_URL+path,{headers,...opts,signal:ctrl.signal,body:opts.body?JSON.stringify(opts.body):undefined});const data=await res.json();if(!res.ok&&data.error)throw new Error(data.error);return data}finally{clearTimeout(timer)}
   },
-  async post(path,body){return this.fetch(path,{method:'POST',body});},
-  async get(path){return this.fetch(path,{method:'GET'});},
-  async put(path,body){return this.fetch(path,{method:'PUT',body});},
-  async health(){try{const d=await this.get('/api/health');apiOnline=d.status==='ok';return apiOnline;}catch(e){apiOnline=false;return false}},
+  async post(path,body){return this.fetch(path,{method:'POST',body})},
+  async get(path){return this.fetch(path,{method:'GET'})},
+  async put(path,body){return this.fetch(path,{method:'PUT',body})},
+  async health(){
+    // 如果 30 秒内已经失败过，直接返回 false，不再重试
+    if(!apiOnline&&Date.now()-this._lastHealthFail<30000)return false;
+    try{const d=await this.fetch('/api/health',{timeout:this._healthTimeout});apiOnline=d.status==='ok';if(!apiOnline)this._lastHealthFail=Date.now();return apiOnline}catch(e){apiOnline=false;this._lastHealthFail=Date.now();return false}},
   // Auth
   async register(u,p){const d=await this.post('/api/auth/register',{username:u,password:p});this.setToken(d.token);return d},
   async login(u,p){const d=await this.post('/api/auth/login',{username:u,password:p});this.setToken(d.token);return d},
