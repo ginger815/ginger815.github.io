@@ -1,0 +1,11 @@
+{
+  "name": "gingergame",
+  "version": "1.0.0",
+  "description": "小姜消消乐-gingergame",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
