@@ -269,7 +269,7 @@ const C={
 // ============================================================
 const S={
   pk(k){return'mg_'+k;},
-  get(k,d){try{const v=localStorage.getItem('mg_'+k);return v!==null?v:d}catch(e){return d}},
+  get(k,d){try{const v=localStorage.getItem('mg_'+k);return v!==null&&v!=='undefined'&&v!=='null'?v:d}catch(e){return d}},
   set(k,v){try{localStorage.setItem('mg_'+k,v)}catch(e){}},
   getO(k,d){try{const v=localStorage.getItem('mg_'+k);return v?JSON.parse(v):d}catch(e){return d}},
   setO(k,v){try{localStorage.setItem('mg_'+k,JSON.stringify(v))}catch(e){}},
@@ -540,11 +540,11 @@ async function syncItemsFromServer(){
 // ============================================================
 // HOME
 // ============================================================
-function loadHome(){if(!curUser)curUser=S.get('username','');const ud=S.getO('user_'+curUser);if(ud)userM=new UserModel(ud);else userM=new UserModel();items=S.getO('items',{})}
+function loadHome(){if(!curUser||curUser==='undefined')curUser=S.get('username','');if(curUser==='undefined')curUser='';const ud=S.getO('user_'+curUser);if(ud)userM=new UserModel(ud);else userM=new UserModel();items=S.getO('items',{})}
 function renderHome(){
   if(!userM)return;
-  document.getElementById('h-av').textContent=S.get('avatar','😊').replace(/^undefined$/,'😊');
-  document.getElementById('h-nick').textContent=S.get('nickname',curUser||'新玩家').replace(/^undefined$/,curUser||'新玩家');
+  document.getElementById('h-av').textContent=S.get('avatar','😊');
+  document.getElementById('h-nick').textContent=S.get('nickname',curUser||'新玩家');
   document.getElementById('h-lv').textContent='Lv.'+userM.level;
   document.getElementById('h-bal').textContent='💰'+userM.coins+' 💎'+userM.diamonds;
   checkApi();
