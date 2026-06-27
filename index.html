@@ -187,9 +187,8 @@ body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;backgr
 <div class="scroll-area" id="home-tab-content"></div>
 <div class="tab-bar">
 <div class="tab-item active" onclick="switchHomeTab(0)"><span class="ti">🏠</span>首页</div>
-<div class="tab-item" onclick="switchHomeTab(1)"><span class="ti">🏆</span>排行</div>
-<div class="tab-item" onclick="switchHomeTab(2)"><span class="ti">🛒</span>商城</div>
-<div class="tab-item" onclick="switchHomeTab(3)"><span class="ti">👤</span>我的</div>
+<div class="tab-item" onclick="switchHomeTab(1)"><span class="ti">🛒</span>商城</div>
+<div class="tab-item" onclick="switchHomeTab(2)"><span class="ti">👤</span>我的</div>
 </div>
 <div class="checkin-overlay hidden" id="chk-overlay" onclick="if(event.target===this)closeCheckin()"><div class="ci-card" id="chk-card"></div></div>
 </div>
@@ -471,10 +470,10 @@ async function doLogin(){
       const f=all.find(pl=>pl.username===u);
       if(!f){toast('用户不存在，请先注册');return}
       if(f.password!==p){toast('密码错误');return}
-      curUser=u;S.set('username',u);S.set('nickname',f.nickname);S.set('avatar',f.avatar);
+      curUser=u;S.set('username',u);S.set('nickname',f.nickname||f.username);S.set('avatar',f.avatar||'😊');
       S.setB('logged_in',true);
       let ud=S.getO('user_'+u);
-      if(!ud){const nm=new UserModel();nm.username=u;nm.nickname=f.nickname;nm.avatar=f.avatar;ud=nm.toObj();S.setO('user_'+u,ud)}
+      if(!ud){const nm=new UserModel();nm.username=u;nm.nickname=f.nickname||f.username;nm.avatar=f.avatar||'😊';ud=nm.toObj();S.setO('user_'+u,ud)}
     }
     const rm=document.getElementById('rmpwd').checked;
     S.setB('remember_pwd',rm);if(rm)S.set('password',p);else S.set('password','');
@@ -504,8 +503,8 @@ async function doLogin(){
 
 // 服务端登录后同步资料到本地
 async function syncServerProfile(d){
-  curUser=d.user.username;S.set('username',d.user.username);S.set('nickname',d.user.nickname);S.set('avatar',d.user.avatar);S.setB('logged_in',true);
-  userM=new UserModel({username:d.user.username,nickname:d.user.nickname,avatar:d.user.avatar,level:d.user.level,exp:d.user.exp,coins:d.user.coins,diamonds:d.user.diamonds,highScore:d.user.high_score,clearedLevels:d.user.clearedLevels||[],totalCleared:(d.user.clearedLevels||[]).length});
+  curUser=d.user.username;S.set('username',d.user.username);S.set('nickname',d.user.nickname||d.user.username);S.set('avatar',d.user.avatar||'😊');S.setB('logged_in',true);
+  userM=new UserModel({username:d.user.username,nickname:d.user.nickname||d.user.username,avatar:d.user.avatar||'😊',level:d.user.level,exp:d.user.exp,coins:d.user.coins,diamonds:d.user.diamonds,highScore:d.user.high_score,clearedLevels:d.user.clearedLevels||[],totalCleared:(d.user.clearedLevels||[]).length});
   S.setO('user_'+d.user.username,userM.toObj());
   if(d.items)S.setO('items',d.items);
   // 本地玩家列表也记录
@@ -544,8 +543,8 @@ async function syncItemsFromServer(){
 function loadHome(){if(!curUser)curUser=S.get('username','');const ud=S.getO('user_'+curUser);if(ud)userM=new UserModel(ud);else userM=new UserModel();items=S.getO('items',{})}
 function renderHome(){
   if(!userM)return;
-  document.getElementById('h-av').textContent=S.get('avatar','😊');
-  document.getElementById('h-nick').textContent=S.get('nickname','新玩家');
+  document.getElementById('h-av').textContent=S.get('avatar','😊').replace(/^undefined$/,'😊');
+  document.getElementById('h-nick').textContent=S.get('nickname',curUser||'新玩家').replace(/^undefined$/,curUser||'新玩家');
   document.getElementById('h-lv').textContent='Lv.'+userM.level;
   document.getElementById('h-bal').textContent='💰'+userM.coins+' 💎'+userM.diamonds;
   checkApi();
@@ -559,13 +558,12 @@ function switchHomeTab(i){
 function renderHomeTab(){
   const ct=document.getElementById('home-tab-content');
   if(htIdx===0){ct.innerHTML=hMainTab();bindHomeEvents()}
-  else if(htIdx===1){hLbTab()}
-  else if(htIdx===2){ct.innerHTML=hShopTab()}
+  else if(htIdx===1){ct.innerHTML=hShopTab()}
   else ct.innerHTML=hProfTab();
 }
 function hMainTab(){
   const sw=C.BANNERS.map((b,i)=>`<div class="slide${i===0?' active':''}" style="background:${b.color}" onclick="openCheckin()"><div style="font-size:36px;margin-top:12px">${b.icon}</div><h3 style="font-size:18px;font-weight:700;margin-top:4px">${b.title}</h3><div style="font-size:12px;color:rgba(255,255,255,0.8);margin-top:3px">${b.sub}</div></div>`).join('');
-  const fs=[['🎮','开始游戏','#FFF0F5',"navigateTo('game')"],['🏆','排行榜','#F0F8FF',"switchHomeTab(1)"],['🛒','道具商城','#FFF8F0',"switchHomeTab(2)"],['👤','个人中心','#F5FFF5',"switchHomeTab(3)"],['📊','每日任务','#FFF5FF',"showTasks()"],['🎁','每日签到','#FFFDE8',"openCheckin()"],['💎','宝石矿场','#E8F5FF',"collectMine()"],['⚙️','游戏设置','#F5F5F5',"switchHomeTab(3)"]];
+  const fs=[['🎮','开始游戏','#FFF0F5',"navigateTo('game')"],['🏆','排行榜','#F0F8FF',"navigateTo('leaderboard')"],['🛒','道具商城','#FFF8F0',"switchHomeTab(1)"],['👤','个人中心','#F5FFF5',"switchHomeTab(2)"],['📊','每日任务','#FFF5FF',"showTasks()"],['🎁','每日签到','#FFFDE8',"openCheckin()"],['💎','宝石矿场','#E8F5FF',"collectMine()"],['⚙️','游戏设置','#F5F5F5',"switchHomeTab(2)"]];
   const fh=fs.map(f=>`<div class="func-item" style="background:${f[2]}" onclick="${f[3]}"><div class="fi">${f[0]}</div>${f[1]}</div>`).join('');
   return `<div class="swiper-wrap" id="swiper">${sw}</div>
   <div class="swiper-dots">${C.BANNERS.map((_,i)=>`<div class="dot${i===0?' active':''}" data-si="${i}"></div>`).join('')}</div>
