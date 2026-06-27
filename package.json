@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "小姜消消乐-gingergame",
   "scripts": {
+    "postinstall": "cd server && npm install",
     "start": "node server/index.js"
   },
   "engines": {
