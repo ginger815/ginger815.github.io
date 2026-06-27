@@ -182,7 +182,7 @@ body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;backgr
 <div class="page" id="home-page">
 <div class="home-header">
 <div class="av" id="h-av" onclick="navigateTo('profile')">😊</div>
-<div class="info"><h3 id="h-nick">新玩家</h3><div class="tags"><span class="lv" id="h-lv">Lv.1</span><span class="money" id="h-bal">💰500 💎50</span></div></div>
+<div class="info"><h3 id="h-nick">新玩家</h3><div class="tags"><span class="lv" id="h-lv">Lv.1</span><span class="money" id="h-bal">💰500 💎50</span><span id="api-badge" style="font-size:10px;margin-left:4px">⚫ 离线</span></div></div>
 <div style="flex:1"></div></div>
 <div class="scroll-area" id="home-tab-content"></div>
 <div class="tab-bar">
@@ -390,6 +390,55 @@ let items={},hMode=false,bMode=false,lMode=false,cMode=false,rStamp=0;
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 
 // ============================================================
+// API CLIENT (连接后端时使用)
+// ============================================================
+const API_URL = 'https://ginger815githubio-production.up.railway.app';
+let apiToken=localStorage.getItem('mg_api_token')||'';
+let apiOnline=false;
+
+const Api={
+  setToken(t){apiToken=t;if(t)localStorage.setItem('mg_api_token',t);else localStorage.removeItem('mg_api_token');},
+  async fetch(path,opts={}){
+    const headers={'Content-Type':'application/json'};
+    if(apiToken)headers['Authorization']='Bearer '+apiToken;
+    const res=await fetch(API_URL+path,{headers,...opts,body:opts.body?JSON.stringify(opts.body):undefined});
+    const data=await res.json();
+    if(!res.ok&&data.error)throw new Error(data.error);
+    return data;
+  },
+  async post(path,body){return this.fetch(path,{method:'POST',body});},
+  async get(path){return this.fetch(path,{method:'GET'});},
+  async put(path,body){return this.fetch(path,{method:'PUT',body});},
+  async health(){try{const d=await this.get('/api/health');apiOnline=d.status==='ok';return apiOnline;}catch(e){apiOnline=false;return false}},
+  // Auth
+  async register(u,p){const d=await this.post('/api/auth/register',{username:u,password:p});this.setToken(d.token);return d},
+  async login(u,p){const d=await this.post('/api/auth/login',{username:u,password:p});this.setToken(d.token);return d},
+  // Profile
+  async getProfile(){const d=await this.get('/api/user/profile');return d},
+  async updateProfile(nick,av){return this.put('/api/user/profile',{nickname:nick,avatar:av})},
+  async syncStats(lv,exp,coins,dia,hs){return this.post('/api/user/stats',{level:lv,exp,coins,diamonds:dia,highScore:hs})},
+  async unlockLevel(lid){return this.post('/api/user/unlock',{levelId:lid})},
+  // Game
+  async saveGame(board,score,ml,ts,cl){return this.post('/api/game/save',{board,score,movesLeft:ml,targetScore:ts,currentLevel:cl})},
+  async loadGame(){return this.get('/api/game/load')},
+  // Leaderboard
+  async getLeaderboard(sort='stars'){return this.get('/api/leaderboard?sort='+sort)},
+  // Shop
+  async buyItem(itemId){return this.post('/api/shop/buy',{itemId})},
+  async getItems(){return this.get('/api/shop/items')},
+  // Checkin
+  async checkinStatus(){return this.get('/api/checkin/status')},
+  async doCheckin(){return this.post('/api/checkin')}
+};
+
+// 自动检测后端是否在线
+function checkApi(){Api.health().then(ok=>{apiOnline=ok;updateApiBadge()}).catch(()=>{apiOnline=false;updateApiBadge()})}
+function updateApiBadge(){
+  const el=document.getElementById('api-badge');
+  if(el)el.textContent=apiOnline?'🟢 在线':'⚫ 离线';
+}
+
+// ============================================================
 // LOGIN
 // ============================================================
 function switchMode(m){
@@ -410,33 +459,69 @@ async function doLogin(){
   if(loginMode==='login'){
     if(!u){toast('请输入用户名');return}
     if(!p){toast('请输入密码');return}
-    const all=S.getO('all_players',[]);
-    const f=all.find(pl=>pl.username===u);
-    if(!f){toast('用户不存在，请先注册');return}
-    if(f.password!==p){toast('密码错误');return}
-    curUser=u;S.set('username',u);S.set('nickname',f.nickname);S.set('avatar',f.avatar);
-    S.setB('logged_in',true);
+    // 尝试服务端登录
+    let serverOk=false;
+    if(apiOnline||await Api.health()){try{const d=await Api.login(u,p);serverOk=true;await syncServerProfile(d);toast('登录成功！已连接云端~');}catch(e){toast('云端登录失败，使用本地数据');}}
+    if(!serverOk){
+      const all=S.getO('all_players',[]);
+      const f=all.find(pl=>pl.username===u);
+      if(!f){toast('用户不存在，请先注册');return}
+      if(f.password!==p){toast('密码错误');return}
+      curUser=u;S.set('username',u);S.set('nickname',f.nickname);S.set('avatar',f.avatar);
+      S.setB('logged_in',true);
+      let ud=S.getO('user_'+u);
+      if(!ud){const nm=new UserModel();nm.username=u;nm.nickname=f.nickname;nm.avatar=f.avatar;ud=nm.toObj();S.setO('user_'+u,ud)}
+    }
     const rm=document.getElementById('rmpwd').checked;
     S.setB('remember_pwd',rm);if(rm)S.set('password',p);else S.set('password','');
-    let ud=S.getO('user_'+u);
-    if(!ud){const nm=new UserModel();nm.username=u;nm.nickname=f.nickname;nm.avatar=f.avatar;ud=nm.toObj();S.setO('user_'+u,ud)}
-    userM=new UserModel(ud);
-    toast('登录成功！欢迎回来~');navigateTo('home');
+    if(!serverOk){let ud=S.getO('user_'+u);if(ud)userM=new UserModel(ud);}
+    navigateTo('home');
   }else{
     const cp=document.getElementById('lcpwd').value;
     if(!u){toast('请输入用户名（同时也是游戏昵称）');return}
     if(u.length<2){toast('用户名至少2个字符（支持中文）');return}
     if(p.length<6){toast('密码长度至少6位');return}
     if(p!==cp){toast('两次密码不一致');return}
-    const all=S.getO('all_players',[]);
-    if(all.find(pl=>pl.username===u)){toast('用户名已被注册');return}
-    const np={username:u,password:p,nickname:u,avatar:'😊'};
-    all.push(np);S.setO('all_players',all);
-    const nm=new UserModel();nm.username=u;nm.nickname=u;nm.avatar='😊';
-    S.setO('user_'+u,nm.toObj());
-    toast('注册成功！直接点击登录即可');
+    // 尝试服务端注册
+    let serverOk=false;
+    if(apiOnline||await Api.health()){try{const d=await Api.register(u,p);serverOk=true;curUser=u;S.set('username',u);S.set('nickname',u);S.set('avatar','😊');S.setB('logged_in',true);userM=new UserModel();userM.username=u;userM.nickname=u;userM.avatar='😊';S.setO('user_'+u,userM.toObj());toast('注册成功！已同步到云端，点击登录');}catch(e){toast('云端注册失败: '+e.message);}}
+    if(!serverOk){
+      const all=S.getO('all_players',[]);
+      if(all.find(pl=>pl.username===u)){toast('用户名已被注册');return}
+      const np={username:u,password:p,nickname:u,avatar:'😊'};
+      all.push(np);S.setO('all_players',all);
+      const nm=new UserModel();nm.username=u;nm.nickname=u;nm.avatar='😊';
+      S.setO('user_'+u,nm.toObj());
+      toast('注册成功！直接点击登录即可');
+    }
     switchMode('login');document.getElementById('luser').value=u;
   }
+}
+
+// 服务端登录后同步资料到本地
+async function syncServerProfile(d){
+  curUser=d.user.username;S.set('username',d.user.username);S.set('nickname',d.user.nickname);S.set('avatar',d.user.avatar);S.setB('logged_in',true);
+  userM=new UserModel({username:d.user.username,nickname:d.user.nickname,avatar:d.user.avatar,level:d.user.level,exp:d.user.exp,coins:d.user.coins,diamonds:d.user.diamonds,highScore:d.user.high_score,clearedLevels:d.user.clearedLevels||[],totalCleared:(d.user.clearedLevels||[]).length});
+  S.setO('user_'+d.user.username,userM.toObj());
+  if(d.items)S.setO('items',d.items);
+  // 本地玩家列表也记录
+  const all=S.getO('all_players',[]);
+  if(!all.find(pl=>pl.username===d.user.username)){all.push({username:d.user.username,password:'',nickname:d.user.nickname,avatar:d.user.avatar});S.setO('all_players',all)}
+}
+
+// 游戏结束时同步数据到服务端
+async function syncToServer(){
+  if(!apiOnline&&!await Api.health())return;
+  try{
+    await Api.syncStats(userM.level,userM.exp,userM.coins,userM.diamonds,userM.highScore);
+    for(const lid of userM.clearedLevels)await Api.unlockLevel(lid);
+    await Api.updateProfile(userM.nickname,userM.avatar);
+    if(items)for(const[id,cnt]of Object.entries(items))if(cnt>0)await Api.addItem(Number(id),cnt);
+  }catch(e){/* 静默失败 */}
+}
+async function syncItemsFromServer(){
+  if(!apiOnline&&!await Api.health())return null;
+  try{const d=await Api.getItems();return d.items||{};}catch(e){return null}
 }
 
 (function init(){
@@ -459,6 +544,7 @@ function renderHome(){
   document.getElementById('h-nick').textContent=S.get('nickname','新玩家');
   document.getElementById('h-lv').textContent='Lv.'+userM.level;
   document.getElementById('h-bal').textContent='💰'+userM.coins+' 💎'+userM.diamonds;
+  checkApi();
   renderHomeTab();
 }
 function switchHomeTab(i){
@@ -466,10 +552,10 @@ function switchHomeTab(i){
   document.querySelectorAll('#home-page .tab-item').forEach((el,j)=>el.classList.toggle('active',j===i));
   renderHomeTab();
 }
-function renderHomeTab(){
+async function renderHomeTab(){
   const ct=document.getElementById('home-tab-content');
   if(htIdx===0){ct.innerHTML=hMainTab();bindHomeEvents()}
-  else if(htIdx===1){ct.innerHTML=hLbTab()}
+  else if(htIdx===1){await hLbTab()}
   else if(htIdx===2){ct.innerHTML=hShopTab()}
   else ct.innerHTML=hProfTab();
 }
@@ -510,8 +596,10 @@ function openCheckin(){
   document.getElementById('chk-card').innerHTML=h;document.getElementById('chk-overlay').classList.remove('hidden');
 }
 function closeCheckin(){document.getElementById('chk-overlay').classList.add('hidden')}
-function doCheckin(){
+async function doCheckin(){
   const day=S.getN('chk_day',1);const idx=day-1;if(idx<0||idx>=C.CHK.length)return;const r=C.CHK[idx];
+  // 尝试服务端签到
+  if(apiOnline||await Api.health()){try{const d=await Api.doCheckin();userM.addCoins(d.reward.coins);userM.addDia(d.reward.diamonds);userM.addExp(C.EXP_CHK);S.setN('chk_day',d.checkinDay);S.setB('chk_today',true);S.set('chk_date',getToday());S.setO('user_'+curUser,userM.toObj());toast('签到成功(云端)！💰+'+d.reward.coins+' 💎+'+d.reward.diamonds);closeCheckin();renderHome();return}catch(e){toast('云端签到失败，使用本地');}}
   if(!userM)loadHome();
   userM.addCoins(r.coins);userM.addDia(r.dia);userM.addExp(C.EXP_CHK);
   S.setN('chk_day',day>=7?1:day+1);S.setB('chk_today',true);S.set('chk_date',getToday());
@@ -529,13 +617,17 @@ function collectMine(){
 
 // Leaderboard
 let _lb=[];
-function hLbTab(){
+async function hLbTab(){
   if(!userM)loadHome();
-  const all=S.getO('all_players',[]);const es=[];
+  let es=[];
+  // 尝试从服务端获取排行榜
+  if(apiOnline||await Api.health()){try{const d=await Api.getLeaderboard('stars');es=d.leaderboard||[];const d2=await Api.getLeaderboard('score');const d3=await Api.getLeaderboard('combo');_lb=[es.slice(0,20),d2.leaderboard.slice(0,20),d3.leaderboard.slice(0,20)];document.getElementById('home-tab-content').innerHTML=`<div class="lb-tabs" id="lbt"><div class="lb-tab active" onclick="swLb(0)">闯关星级</div><div class="lb-tab" onclick="swLb(1)">积分挑战</div><div class="lb-tab" onclick="swLb(2)">最高连击</div></div><div class="lb-list" id="lbl">${renderLb(_lb[0],'stars')}</div>`;return;}catch(e){/* fallback */}}
+  // 本地排行
+  const all=S.getO('all_players',[]);
   for(const p of all){const ud=S.getO('user_'+p.username);if(ud)es.push({username:p.username,nickname:p.nickname||p.username,avatar:p.avatar||'😊',score:ud.highScore||0,level:ud.level||1,stars:(ud.clearedLevels?ud.clearedLevels.length:0),mc:0})}
   if(es.length===0)es.push({username:curUser,nickname:S.get('nickname','我'),avatar:S.get('avatar','😊'),score:0,level:1,stars:0,mc:0});
   _lb=[rankE([...es],'stars').slice(0,20),rankE([...es],'score').slice(0,20),rankE([...es],'level').slice(0,20)];
-  return `<div class="lb-tabs" id="lbt"><div class="lb-tab active" onclick="swLb(0)">闯关星级</div><div class="lb-tab" onclick="swLb(1)">积分挑战</div><div class="lb-tab" onclick="swLb(2)">最高连击</div></div><div class="lb-list" id="lbl">${renderLb(_lb[0],'stars')}</div>`;
+  document.getElementById('home-tab-content').innerHTML=`<div class="lb-tabs" id="lbt"><div class="lb-tab active" onclick="swLb(0)">闯关星级</div><div class="lb-tab" onclick="swLb(1)">积分挑战</div><div class="lb-tab" onclick="swLb(2)">最高连击</div></div><div class="lb-list" id="lbl">${renderLb(_lb[0],'stars')}</div>`;
 }
 function rankE(d,by){
   d.sort((a,b)=>{let va,vb;if(by==='stars'){va=a.stars;vb=b.stars}else if(by==='score'){va=a.score;vb=b.score}else{va=a.level;vb=b.level};return vb-va});
@@ -566,9 +658,10 @@ function rShopItems(arr){
     return `<div class="shop-item"><div class="sii">${it.icon}</div><div class="sin">${it.name}</div><div class="sid">${it.desc}</div><div class="sio">拥有:${items[it.id]||0}</div><button class="sib ${ok?'ok':'no'}" ${ok?'':'disabled'} onclick="buyItem(${it.id})">${it.cur==='coin'?'💰':'💎'}${it.price}</button></div>`;
   }).join('');
 }
-function buyItem(id){
+async function buyItem(id){
   if(!userM)loadHome();
   const all=[...C.SCOINS,...C.SDIA];const it=all.find(i=>i.id===id);if(!it)return;
+  if(apiOnline||await Api.health()){try{const r=await Api.buyItem(id);userM.coins=r.coins;userM.diamonds=r.diamonds;items[id]=(items[id]||0)+1;S.setN('coins',r.coins);S.setN('diamonds',r.diamonds);S.setO('items',items);S.setO('user_'+curUser,userM.toObj());toast('购买成功(云端): '+it.name);renderHome();return}catch(e){toast('云端购买失败，使用本地');}}
   if(it.cur==='coin'){if(userM.coins<it.price){toast('金币不足！');return}userM.addCoins(-it.price)}
   else{if(userM.diamonds<it.price){toast('钻石不足！');return}userM.addDia(-it.price)}
   items[it.id]=(items[it.id]||0)+1;
@@ -698,6 +791,7 @@ async function onWin(){
   gState='win';const lv=C.LEVELS[gm.lv-1],cr=lv.ts*10,dr=Math.floor(lv.ts/10),eg=C.EXP_CLR+gm.lv*5;
   if(!userM)loadHome();userM.addCoins(cr);userM.addDia(dr);userM.unlockLv(gm.lv);userM.updHS(gm.score);
   const lu=userM.addExp(eg);S.setO('user_'+curUser,userM.toObj());S.setN('coins',userM.coins);S.setN('diamonds',userM.diamonds);S.setN('high_score',userM.highScore);
+  syncToServer(); // 云端同步
   showResult('🎉','恭喜通关！','得分: '+gm.score+'\n💰 +'+cr+'  💎 +'+dr+'\n经验 +'+eg+(lu>0?'\n等级提升！Lv.'+userM.level:''),true);
 }
 function showResult(ic,title,sub,showRetry){
@@ -736,11 +830,13 @@ async function useItem(r,c){if(proc)return;proc=true;
 // STANDALONE PAGES
 // ============================================================
 function renderLbPage(){
-  const all=S.getO('all_players',[]);const es=[];for(const p of all){const ud=S.getO('user_'+p.username);if(ud)es.push({username:p.username,nickname:p.nickname||p.username,avatar:p.avatar||'😊',score:ud.highScore||0,level:ud.level||1,stars:(ud.clearedLevels?ud.clearedLevels.length:0),mc:0})}
-  if(es.length===0)es.push({username:curUser||'',nickname:S.get('nickname','我'),avatar:S.get('avatar','😊'),score:0,level:1,stars:0,mc:0});
-  window._ld=[rankE([...es],'stars').slice(0,15),rankE([...es],'score').slice(0,15),rankE([...es],'level').slice(0,15)];
-  const el=document.getElementById('leaderboard-page');
-  el.innerHTML=`<div class="page-head"><button class="btn btn-sm" style="background:#FFF0F5;color:#FF6B9D" onclick="navigateTo('home')">← 返回</button><div class="ph-title">排行榜</div><div class="ph-spc"></div></div><div class="lb-tabs" id="lbt2"><div class="lb-tab active" onclick="swLb2(0)">闯关星级</div><div class="lb-tab" onclick="swLb2(1)">积分挑战</div><div class="lb-tab" onclick="swLb2(2)">最高连击</div></div><div class="lb-list" id="lbl2">${renderLb(window._ld[0],'stars')}</div>`;
+  fetchLbPage();
+}
+async function fetchLbPage(){
+  let starLB=[],scoreLB=[],comboLb=[];
+  if(apiOnline||await Api.health()){try{const d1=await Api.getLeaderboard('stars');starLB=d1.leaderboard.slice(0,15);const d2=await Api.getLeaderboard('score');scoreLB=d2.leaderboard.slice(0,15);const d3=await Api.getLeaderboard('combo');comboLb=d3.leaderboard.slice(0,15);window._ld=[starLB,scoreLB,comboLb];}catch(e){/* fallback */}}
+  if(starLB.length===0){const all=S.getO('all_players',[]);const es=[];for(const p of all){const ud=S.getO('user_'+p.username);if(ud)es.push({username:p.username,nickname:p.nickname||p.username,avatar:p.avatar||'😊',score:ud.highScore||0,level:ud.level||1,stars:(ud.clearedLevels?ud.clearedLevels.length:0),mc:0})}if(es.length===0)es.push({username:curUser||'',nickname:S.get('nickname','我'),avatar:S.get('avatar','😊'),score:0,level:1,stars:0,mc:0});window._ld=[rankE([...es],'stars').slice(0,15),rankE([...es],'score').slice(0,15),rankE([...es],'level').slice(0,15)]}
+  const el=document.getElementById('leaderboard-page');el.innerHTML=`<div class="page-head"><button class="btn btn-sm" style="background:#FFF0F5;color:#FF6B9D" onclick="navigateTo('home')">← 返回</button><div class="ph-title">排行榜</div><div class="ph-spc"></div></div><div class="lb-tabs" id="lbt2"><div class="lb-tab active" onclick="swLb2(0)">闯关星级</div><div class="lb-tab" onclick="swLb2(1)">积分挑战</div><div class="lb-tab" onclick="swLb2(2)">最高连击</div></div><div class="lb-list" id="lbl2">${renderLb(window._ld[0],'stars')}</div>`;
 }
 function swLb2(i){
   document.querySelectorAll('#lbt2 .lb-tab').forEach((t,j)=>t.classList.toggle('active',j===i));
@@ -800,3 +896,4 @@ function renderShopPg(){
 </script>
 </body>
 </html>
+
