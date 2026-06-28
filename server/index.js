@@ -1,7 +1,6 @@
 /**
  * 消消乐后端 API 服务
  * 部署: node index.js  端口: 3000
- * 推荐部署平台: Railway / Render / Fly.io
  */
 const express = require('express');
 const cors = require('cors');
@@ -154,7 +153,6 @@ app.post('/api/shop/buy', auth, (req, res) => {
   const { itemId } = req.body;
   if (!itemId) return res.status(400).json({ error: '缺少 itemId' });
 
-  // 道具定义（与前端一致）
   const ALL_ITEMS = {
     1: { price: 100, currency: 'coin' },
     2: { price: 200, currency: 'coin' },
@@ -177,12 +175,9 @@ app.post('/api/shop/buy', auth, (req, res) => {
     return res.status(400).json({ error: `${item.currency === 'coin' ? '金币' : '钻石'}不足` });
   }
 
-  // 扣款
   const newCoins = item.currency === 'coin' ? user.coins - item.price : user.coins;
   const newDiamonds = item.currency === 'diamond' ? user.diamonds - item.price : user.diamonds;
   DB.updateStats(req.userId, user.level, user.exp, newCoins, newDiamonds, user.high_score);
-
-  // 增加道具
   DB.addItem(req.userId, itemId, 1);
 
   res.json({ success: true, coins: newCoins, diamonds: newDiamonds });
@@ -191,8 +186,8 @@ app.post('/api/shop/buy', auth, (req, res) => {
 // ========== 签到路由 ==========
 
 // 获取签到状态
-app.get('/api/checkin/status', auth, (req, res) => {
-  const ci = DB.getCheckin(req.userId);
+app.get('/api/checkin/status', auth, async (req, res) => {
+  const ci = await DB.getCheckin(req.userId);
   const today = new Date().toDateString();
   res.json({
     checkinDay: ci.checkin_day,
@@ -201,14 +196,13 @@ app.get('/api/checkin/status', auth, (req, res) => {
 });
 
 // 签到
-app.post('/api/checkin', auth, (req, res) => {
-  const ci = DB.getCheckin(req.userId);
+app.post('/api/checkin', auth, async (req, res) => {
+  const ci = await DB.getCheckin(req.userId);
   const today = new Date().toDateString();
   if (ci.last_date === today) {
     return res.status(400).json({ error: '今日已签到' });
   }
 
-  // 奖励配置
   const REWARDS = [
     { coins: 50, diamonds: 2 }, { coins: 80, diamonds: 3 },
     { coins: 100, diamonds: 5 }, { coins: 120, diamonds: 5 },
@@ -222,11 +216,10 @@ app.post('/api/checkin', auth, (req, res) => {
   const newDay = ci.checkin_day >= 7 ? 1 : ci.checkin_day + 1;
   DB.updateCheckin(req.userId, newDay, today);
 
-  // 发放奖励
   DB.updateStats(
     req.userId,
     user.level,
-    user.exp + 10,   // 签到经验
+    user.exp + 10,
     user.coins + reward.coins,
     user.diamonds + reward.diamonds,
     user.high_score
@@ -241,7 +234,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 // ========== 启动服务 ==========
-app.listen(PORT, () => {
-  console.log(`🍬 消消乐后端已启动 → http://localhost:${PORT}`);
-  console.log(`   API 文档: http://localhost:${PORT}/api/health`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Health check: http://0.0.0.0:${PORT}/api/health`);
 });
