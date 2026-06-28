@@ -50,7 +50,7 @@ app.post('/api/auth/register', async (req, res) => {
   if (result.error) return res.status(400).json({ error: result.error });
 
   const token = jwt.sign({ userId: result.userId }, JWT_SECRET, { expiresIn: TOKEN_EXPIRE });
-  const profile = DB.getUserProfile(result.userId);
+  const profile = await DB.getUserProfile(result.userId);
   res.json({ token, user: profile });
 });
 
@@ -63,19 +63,19 @@ app.post('/api/auth/login', async (req, res) => {
   if (result.error) return res.status(401).json({ error: result.error });
 
   const token = jwt.sign({ userId: result.userId }, JWT_SECRET, { expiresIn: TOKEN_EXPIRE });
-  const profile = DB.getUserProfile(result.userId);
+  const profile = await DB.getUserProfile(result.userId);
   res.json({ token, user: profile });
 });
 
 // ========== 用户路由 ==========
 
 // 获取个人资料
-app.get('/api/user/profile', auth, (req, res) => {
-  const user = DB.getUserProfile(req.userId);
+app.get('/api/user/profile', auth, async (req, res) => {
+  const user = await DB.getUserProfile(req.userId);
   if (!user) return res.status(404).json({ error: '用户不存在' });
-  const cleared = DB.getClearedLevels(req.userId);
-  const items = DB.getItems(req.userId);
-  const saved = DB.loadGame(req.userId);
+  const cleared = await DB.getClearedLevels(req.userId);
+  const items = await DB.getItems(req.userId);
+  const saved = await DB.loadGame(req.userId);
   res.json({ user: { ...user, clearedLevels: cleared, totalCleared: cleared.length }, items, saved });
 });
 
@@ -112,27 +112,28 @@ app.post('/api/game/save', auth, (req, res) => {
 });
 
 // 加载游戏进度
-app.get('/api/game/load', auth, (req, res) => {
-  const saved = DB.loadGame(req.userId);
+app.get('/api/game/load', auth, async (req, res) => {
+  const saved = await DB.loadGame(req.userId);
   res.json({ saved: saved || null });
 });
 
 // ========== 排行榜路由 ==========
 
 // GET /api/leaderboard?sort=stars|score|combo
-app.get('/api/leaderboard', (req, res) => {
+app.get('/api/leaderboard', async (req, res) => {
   const sortBy = req.query.sort || 'stars';
   if (!['stars', 'score', 'combo'].includes(sortBy)) {
     return res.status(400).json({ error: '排序字段无效' });
   }
-  const data = DB.getAllRanked(sortBy === 'combo' ? 'level' : sortBy);
+  const data = await DB.getAllRanked(sortBy === 'combo' ? 'level' : sortBy);
   res.json({ leaderboard: data });
 });
 
 // 获取排行榜 + 当前用户排名
-app.get('/api/leaderboard/my-rank', auth, (req, res) => {
-  const all = DB.getAllRanked('stars');
-  const myIdx = all.findIndex(e => e.username === (DB.getUserProfile(req.userId)?.username));
+app.get('/api/leaderboard/my-rank', auth, async (req, res) => {
+  const all = await DB.getAllRanked('stars');
+  const user = await DB.getUserProfile(req.userId);
+  const myIdx = all.findIndex(e => e.username === user?.username);
   res.json({
     rank: myIdx >= 0 ? myIdx + 1 : null,
     total: all.length,
@@ -143,13 +144,13 @@ app.get('/api/leaderboard/my-rank', auth, (req, res) => {
 // ========== 商城路由 ==========
 
 // 获取道具库存
-app.get('/api/shop/items', auth, (req, res) => {
-  const items = DB.getItems(req.userId);
+app.get('/api/shop/items', auth, async (req, res) => {
+  const items = await DB.getItems(req.userId);
   res.json({ items });
 });
 
 // 购买道具
-app.post('/api/shop/buy', auth, (req, res) => {
+app.post('/api/shop/buy', auth, async (req, res) => {
   const { itemId } = req.body;
   if (!itemId) return res.status(400).json({ error: '缺少 itemId' });
 
@@ -167,7 +168,7 @@ app.post('/api/shop/buy', auth, (req, res) => {
   const item = ALL_ITEMS[itemId];
   if (!item) return res.status(404).json({ error: '道具不存在' });
 
-  const user = DB.getUserProfile(req.userId);
+  const user = await DB.getUserProfile(req.userId);
   if (!user) return res.status(404).json({ error: '用户不存在' });
 
   const balance = item.currency === 'coin' ? user.coins : user.diamonds;
@@ -212,7 +213,7 @@ app.post('/api/checkin', auth, async (req, res) => {
   const idx = ci.checkin_day - 1;
   const reward = REWARDS[idx] || REWARDS[0];
 
-  const user = DB.getUserProfile(req.userId);
+  const user = await DB.getUserProfile(req.userId);
   const newDay = ci.checkin_day >= 7 ? 1 : ci.checkin_day + 1;
   DB.updateCheckin(req.userId, newDay, today);
 
