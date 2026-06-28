@@ -4,7 +4,6 @@
  * 推荐部署平台: Railway / Render / Fly.io
  */
 const express = require('express');
-const path = require('path');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const DB = require('./db');
@@ -17,9 +16,6 @@ const TOKEN_EXPIRE = '7d';
 // ========== 中间件 ==========
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
-
-// 托管前端静态文件（从上级目录）
-app.use(express.static(path.join(__dirname, '..')));
 
 // 请求日志
 app.use((req, _res, next) => {
