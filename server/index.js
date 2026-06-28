@@ -9,7 +9,7 @@ const jwt = require('jsonwebtoken');
 const DB = require('./db');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'matchgame_secret_change_in_production';
 const TOKEN_EXPIRE = '7d';
 
