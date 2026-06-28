@@ -584,10 +584,10 @@ function getToday(){return new Date().toDateString()}
 async function openCheckin(){
   // 尝试从服务端同步签到状态
   if(!curUser||curUser==='undefined')curUser=S.get('username','');
-  if(apiOnline){try{const s=await Api.checkinStatus();S.setN('chk_day_'+curUser,s.checkinDay);S.setB('chk_today_'+curUser,s.checkedInToday);S.set('chk_date_'+curUser,getToday());}catch(e){}}
+  if(apiOnline){try{const s=await Api.checkinStatus();S.setN('chk_day_'+curUser,s.checkinDay||1);S.setB('chk_today_'+curUser,s.checkedInToday);S.set('chk_date_'+curUser,getToday());}catch(e){console.error('checkin status error:',e)}}
   const lastDate=S.get('chk_date_'+curUser,'');
   if(lastDate!==getToday()){S.setB('chk_today_'+curUser,false);S.set('chk_date_'+curUser,getToday())}
-  const day=S.getN('chk_day_'+curUser,1);const ci=S.getB('chk_today_'+curUser,false);
+  const day=S.getN('chk_day_'+curUser,1)||1;const ci=S.getB('chk_today_'+curUser,false);
   let h=`<div style="font-size:46px">🎁</div><div style="font-size:20px;font-weight:700;margin:6px 0">每日签到</div><div style="font-size:13px;color:#999;margin-bottom:14px">连续签到7天领取豪华大礼包</div><div class="ci-grid">`;
   C.CHK.forEach(r=>{
     let st='🔒';if(r.day<day||(r.day===day&&ci))st='✅';else if(r.day===day&&!ci)st='🎯';
@@ -606,9 +606,10 @@ async function doCheckin(){
   _checkingIn=true;
   try{
     if(!curUser||curUser==='undefined')curUser=S.get('username','');
+    if(!curUser){toast('请先登录');closeCheckin();return}
     // 先检查本地是否已签到
     if(S.getB('chk_today_'+curUser,false)){toast('今日已签到，请明天再来~');closeCheckin();return}
-    const day=S.getN('chk_day_'+curUser,1);const idx=day-1;if(idx<0||idx>=C.CHK.length){_checkingIn=false;return}const r=C.CHK[idx];
+    const day=S.getN('chk_day_'+curUser,1)||1;const idx=day-1;if(idx<0||idx>=C.CHK.length){_checkingIn=false;toast('签到数据异常，请刷新重试');return}const r=C.CHK[idx];
     // 尝试服务端签到
     if(apiOnline||await Api.health()){
       try{
@@ -616,7 +617,7 @@ async function doCheckin(){
         if(!userM)loadHome();
         userM.addCoins(d.reward.coins);userM.addDia(d.reward.diamonds);userM.addExp(C.EXP_CHK);
         S.setN('chk_day_'+curUser,d.checkinDay);S.setB('chk_today_'+curUser,true);S.set('chk_date_'+curUser,getToday());
-        S.setO('user_'+curUser,userM.toObj());
+        S.setN('coins',userM.coins);S.setN('diamonds',userM.diamonds);S.setO('user_'+curUser,userM.toObj());
         toast('签到成功(云端)！💰+'+d.reward.coins+' 💎+'+d.reward.diamonds);
         closeCheckin();renderHome();return;
       }catch(e){
@@ -630,8 +631,10 @@ async function doCheckin(){
     if(!userM)loadHome();
     userM.addCoins(r.coins);userM.addDia(r.dia);userM.addExp(C.EXP_CHK);
     S.setN('chk_day_'+curUser,day>=7?1:day+1);S.setB('chk_today_'+curUser,true);S.set('chk_date_'+curUser,getToday());
-    S.setO('user_'+curUser,userM.toObj());
+    S.setN('coins',userM.coins);S.setN('diamonds',userM.diamonds);S.setO('user_'+curUser,userM.toObj());
     toast('签到成功！💰+'+r.coins+' 💎+'+r.dia);closeCheckin();renderHome();
+  }catch(e){
+    toast('签到失败: '+e.message);
   }finally{_checkingIn=false}
 }
 function showTasks(){toast(C.TASKS.map(t=>t.icon+' '+t.name+': 进行中 ('+t.rc+'💰+'+t.rd+'💎)').join('\n'),3500)}
