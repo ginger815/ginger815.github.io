@@ -386,6 +386,7 @@ class GameModel{
 let curUser=null,userM=null,gm=null,loginMode='login',htIdx=0;
 let curCombo=0,maxCombo=0,gState='selecting',selR=-1,selC=-1,proc=false;
 let items={},hMode=false,bMode=false,lMode=false,cMode=false,rStamp=0;
+let _swTimer,_checkingIn=false,_lb=[];
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 
 // ============================================================
@@ -573,7 +574,6 @@ function hMainTab(){
     <div class="activity-card" style="background:#FF9500" onclick="navigateTo('game')"><div style="font-size:28px;margin-bottom:6px">⭐</div><div style="font-size:15px;font-weight:700">积分挑战</div><div style="font-size:10px;color:rgba(255,255,255,0.75);margin-top:3px">冲分竞技<br>每日结算榜单奖励</div></div>
   </div><div class="bottom-spacer"></div>`;
 }
-let _swTimer;
 function bindHomeEvents(){
   let cur=0;const ds=document.querySelectorAll('#swiper+.swiper-dots .dot');
   function go(i){cur=i;document.querySelectorAll('#swiper .slide').forEach((s,si)=>s.classList.toggle('active',si===i));ds.forEach((d,di)=>d.classList.toggle('active',di===i))}
@@ -600,7 +600,6 @@ async function openCheckin(){
   document.getElementById('chk-card').innerHTML=h;document.getElementById('chk-overlay').classList.remove('hidden');
 }
 function closeCheckin(){document.getElementById('chk-overlay').classList.add('hidden')}
-let _checkingIn=false;
 async function doCheckin(){
   if(_checkingIn)return;
   _checkingIn=true;
@@ -647,7 +646,6 @@ function collectMine(){
 }
 
 // Leaderboard
-let _lb=[];
 function hLbTab(){
   if(!userM)loadHome();
   // 1. 立即用本地数据渲染（绝不会返回 Promise）
