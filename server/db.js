@@ -5,8 +5,8 @@ const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 
-// 数据库文件路径：优先使用 DATA_DIR 环境变量（Railway 持久卷），否则使用当前目录
-const DATA_DIR = process.env.DATA_DIR || __dirname;
+// 数据库文件路径：Railway 持久卷挂载在 /data，本地开发使用当前目录
+const DATA_DIR = fs.existsSync('/data') ? '/data' : __dirname;
 const DB_PATH = path.join(DATA_DIR, 'matchgame.db');
 
 let db;
