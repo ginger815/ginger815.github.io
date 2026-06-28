@@ -266,4 +266,6 @@ const DB = {
   }
 };
 
+DB.dbPath = DB_PATH;
+
 module.exports = DB;
