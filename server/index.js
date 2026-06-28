@@ -51,7 +51,9 @@ app.post('/api/auth/register', async (req, res) => {
 
   const token = jwt.sign({ userId: result.userId }, JWT_SECRET, { expiresIn: TOKEN_EXPIRE });
   const profile = await DB.getUserProfile(result.userId);
-  res.json({ token, user: profile });
+  const cleared = await DB.getClearedLevels(result.userId);
+  const items = await DB.getItems(result.userId);
+  res.json({ token, user: { ...profile, clearedLevels: cleared, totalCleared: cleared.length }, items });
 });
 
 // 登录
@@ -64,7 +66,9 @@ app.post('/api/auth/login', async (req, res) => {
 
   const token = jwt.sign({ userId: result.userId }, JWT_SECRET, { expiresIn: TOKEN_EXPIRE });
   const profile = await DB.getUserProfile(result.userId);
-  res.json({ token, user: profile });
+  const cleared = await DB.getClearedLevels(result.userId);
+  const items = await DB.getItems(result.userId);
+  res.json({ token, user: { ...profile, clearedLevels: cleared, totalCleared: cleared.length }, items });
 });
 
 // ========== 用户路由 ==========

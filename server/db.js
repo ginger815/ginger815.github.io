@@ -5,7 +5,9 @@ const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 
-const DB_PATH = path.join(__dirname, 'matchgame.db');
+// 数据库文件路径：优先使用 DATA_DIR 环境变量（Railway 持久卷），否则使用当前目录
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const DB_PATH = path.join(DATA_DIR, 'matchgame.db');
 
 let db;
 let ready = false;
@@ -14,6 +16,11 @@ let ready = false;
 async function initDB() {
   const initSqlJs = require('sql.js');
   const SQL = await initSqlJs();
+
+  // 确保数据目录存在
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
 
   // 从文件加载数据库或创建新的
   if (fs.existsSync(DB_PATH)) {

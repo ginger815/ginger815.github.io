@@ -303,10 +303,10 @@ class UserModel{
   constructor(d){
     this.username=d?d.username||'':'';this.password=d?d.password||'':'';
     this.nickname=d?d.nickname||'新玩家':'新玩家';this.avatar=d?d.avatar||'😊':'😊';
-    this.level=d?d.level||1:1;this.exp=d?d.exp||0:0;
-    this.coins=d?d.coins||C.ICOINS:C.ICOINS;this.diamonds=d?d.diamonds||C.IDIA:C.IDIA;
-    this.highScore=d?d.highScore||0:0;this.clearedLevels=d?d.clearedLevels||[]:[];
-    this.totalCleared=d?d.totalCleared||0:0;
+    this.level=d?d.level??1:1;this.exp=d?d.exp??0:0;
+    this.coins=d?d.coins??C.ICOINS:C.ICOINS;this.diamonds=d?d.diamonds??C.IDIA:C.IDIA;
+    this.highScore=d?d.highScore??0:0;this.clearedLevels=d?d.clearedLevels||[]:[];
+    this.totalCleared=d?d.totalCleared??0:0;
   }
   toObj(){return{username:this.username,password:this.password,nickname:this.nickname,avatar:this.avatar,level:this.level,exp:this.exp,coins:this.coins,diamonds:this.diamonds,highScore:this.highScore,clearedLevels:this.clearedLevels,totalCleared:this.totalCleared}}
   getExpNext(){return C.EXP_BASE+(this.level-1)*C.EXP_GROW}
@@ -487,7 +487,7 @@ async function doLogin(){
     if(p!==cp){toast('两次密码不一致');return}
     // 尝试服务端注册
     let serverOk=false;
-    if(apiOnline||await Api.health()){try{const d=await Api.register(u,p);serverOk=true;curUser=u;S.set('username',u);S.set('nickname',u);S.set('avatar','😊');S.setB('logged_in',true);userM=new UserModel();userM.username=u;userM.nickname=u;userM.avatar='😊';S.setO('user_'+u,userM.toObj());toast('注册成功！已同步到云端，点击登录');}catch(e){toast('云端注册失败: '+e.message);}}
+    if(apiOnline||await Api.health()){try{const d=await Api.register(u,p);serverOk=true;await syncServerProfile(d);toast('注册成功！已同步到云端');navigateTo('home');return;}catch(e){toast('云端注册失败: '+e.message);}}
     if(!serverOk){
       const all=S.getO('all_players',[]);
       if(all.find(pl=>pl.username===u)){toast('用户名已被注册');return}
@@ -519,7 +519,6 @@ async function syncToServer(){
     await Api.syncStats(userM.level,userM.exp,userM.coins,userM.diamonds,userM.highScore);
     for(const lid of userM.clearedLevels)await Api.unlockLevel(lid);
     await Api.updateProfile(userM.nickname,userM.avatar);
-    if(items)for(const[id,cnt]of Object.entries(items))if(cnt>0)await Api.addItem(Number(id),cnt);
   }catch(e){/* 静默失败 */}
 }
 async function syncItemsFromServer(){
