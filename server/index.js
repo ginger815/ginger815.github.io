@@ -80,34 +80,34 @@ app.get('/api/user/profile', auth, async (req, res) => {
 });
 
 // 更新个人资料（昵称/头像）
-app.put('/api/user/profile', auth, (req, res) => {
+app.put('/api/user/profile', auth, async (req, res) => {
   const { nickname, avatar } = req.body;
   if (nickname && nickname.trim().length === 0) return res.status(400).json({ error: '昵称不能为空' });
-  DB.updateProfile(req.userId, nickname, avatar);
+  await DB.updateProfile(req.userId, nickname, avatar);
   res.json({ success: true });
 });
 
 // 更新游戏状态（通关后调用）
-app.post('/api/user/stats', auth, (req, res) => {
+app.post('/api/user/stats', auth, async (req, res) => {
   const { level, exp, coins, diamonds, highScore } = req.body;
-  DB.updateStats(req.userId, level ?? 1, exp ?? 0, coins ?? 500, diamonds ?? 50, highScore ?? 0);
+  await DB.updateStats(req.userId, level ?? 1, exp ?? 0, coins ?? 500, diamonds ?? 50, highScore ?? 0);
   res.json({ success: true });
 });
 
 // 解锁关卡
-app.post('/api/user/unlock', auth, (req, res) => {
+app.post('/api/user/unlock', auth, async (req, res) => {
   const { levelId } = req.body;
   if (!levelId) return res.status(400).json({ error: '缺少 levelId' });
-  DB.unlockLevel(req.userId, levelId);
+  await DB.unlockLevel(req.userId, levelId);
   res.json({ success: true });
 });
 
 // ========== 游戏存档路由 ==========
 
 // 保存游戏进度
-app.post('/api/game/save', auth, (req, res) => {
+app.post('/api/game/save', auth, async (req, res) => {
   const { board, score, movesLeft, targetScore, currentLevel } = req.body;
-  DB.saveGame(req.userId, board, score, movesLeft, targetScore, currentLevel);
+  await DB.saveGame(req.userId, board, score, movesLeft, targetScore, currentLevel);
   res.json({ success: true });
 });
 
@@ -178,8 +178,8 @@ app.post('/api/shop/buy', auth, async (req, res) => {
 
   const newCoins = item.currency === 'coin' ? user.coins - item.price : user.coins;
   const newDiamonds = item.currency === 'diamond' ? user.diamonds - item.price : user.diamonds;
-  DB.updateStats(req.userId, user.level, user.exp, newCoins, newDiamonds, user.high_score);
-  DB.addItem(req.userId, itemId, 1);
+  await DB.updateStats(req.userId, user.level, user.exp, newCoins, newDiamonds, user.high_score);
+  await DB.addItem(req.userId, itemId, 1);
 
   res.json({ success: true, coins: newCoins, diamonds: newDiamonds });
 });
@@ -215,9 +215,9 @@ app.post('/api/checkin', auth, async (req, res) => {
 
   const user = await DB.getUserProfile(req.userId);
   const newDay = ci.checkin_day >= 7 ? 1 : ci.checkin_day + 1;
-  DB.updateCheckin(req.userId, newDay, today);
+  await DB.updateCheckin(req.userId, newDay, today);
 
-  DB.updateStats(
+  await DB.updateStats(
     req.userId,
     user.level,
     user.exp + 10,

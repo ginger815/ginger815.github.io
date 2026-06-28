@@ -831,7 +831,7 @@ async function onWin(){
   gState='win';const lv=C.LEVELS[gm.lv-1],cr=lv.ts*10,dr=Math.floor(lv.ts/10),eg=C.EXP_CLR+gm.lv*5;
   if(!userM)loadHome();userM.addCoins(cr);userM.addDia(dr);userM.unlockLv(gm.lv);userM.updHS(gm.score);
   const lu=userM.addExp(eg);S.setO('user_'+curUser,userM.toObj());S.setN('coins',userM.coins);S.setN('diamonds',userM.diamonds);S.setN('high_score',userM.highScore);
-  syncToServer();
+  await syncToServer();
   // 云端存档: 构建棋盘类型矩阵
   if(apiOnline){const bd=gm.brd.map(r=>r.map(g=>g.type));Api.saveGame(bd,gm.score,gm.movesLeft,gm.ts,gm.lv).catch(()=>{});}
   showResult('🎉','恭喜通关！','得分: '+gm.score+'\n💰 +'+cr+'  💎 +'+dr+'\n经验 +'+eg+(lu>0?'\n等级提升！Lv.'+userM.level:''),true);
@@ -933,6 +933,8 @@ async function saveProf(){
   }
   if(window._selAv!==S.get('avatar','😊')){S.set('avatar',window._selAv);const all=S.getO('all_players',[]);all.forEach(p=>{if(p.username===curUser)p.avatar=window._selAv});S.setO('all_players',all);userM.avatar=window._selAv}
   S.setO('user_'+curUser,userM.toObj());toast('修改已保存');window._editP=false;renderProfPage();
+  // 同步资料到服务端
+  await syncToServer();
 }
 
 function renderShopPg(){
