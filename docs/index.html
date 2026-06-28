@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>小姜消消乐-gingergame</title>
+<title>消消乐-gingergame</title>
 <style>
 :root{--pink:#FF6B9D;--pink-light:#FFF0F5;--bg:#FFF5F8;--white:#FFFFFF;--text:#333333;--gray:#999999;--shadow:0 4px 16px rgba(0,0,0,0.1);--shadow-sm:0 2px 6px rgba(0,0,0,0.06)}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -164,7 +164,7 @@ body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;backgr
 
 <!-- ===== LOGIN ===== -->
 <div class="page active" id="login-page">
-<div class="login-logo"><div class="lw">🍬</div><h1>小姜消消乐</h1><p id="login-sub">快乐三消，畅玩无限</p></div>
+<div class="login-logo"><div class="lw">🍬</div><h1>消消乐</h1><p id="login-sub">快乐三消，畅玩无限</p></div>
 <div class="mode-switch"><button class="mode-btn on" id="mode-login" onclick="switchMode('login')">登 录</button><button class="mode-btn off" id="mode-reg" onclick="switchMode('register')">注 册</button></div>
 <div class="login-form">
 <div class="input-row"><span class="ico">👤</span><input id="luser" placeholder="请输入用户名（即游戏昵称）"></div>
@@ -175,7 +175,7 @@ body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;backgr
 </div>
 <div class="lf-opt" id="rmrow"><input type="checkbox" id="rmpwd"><label for="rmpwd">记住密码</label></div>
 <button class="btn btn-primary btn-lg" style="width:85%;margin-top:18px;box-shadow:0 4px 12px rgba(255,107,157,0.3)" id="login-btn" onclick="doLogin()">登  录</button>
-<div class="login-footer">© 2024 小姜消消乐-gingergame</div>
+<div class="login-footer">© 2024 消消乐-gingergame</div>
 </div>
 
 <!-- ===== HOME ===== -->
@@ -601,16 +601,39 @@ async function openCheckin(){
   document.getElementById('chk-card').innerHTML=h;document.getElementById('chk-overlay').classList.remove('hidden');
 }
 function closeCheckin(){document.getElementById('chk-overlay').classList.add('hidden')}
+let _checkingIn=false;
 async function doCheckin(){
-  if(!curUser||curUser==='undefined')curUser=S.get('username','');
-  const day=S.getN('chk_day_'+curUser,1);const idx=day-1;if(idx<0||idx>=C.CHK.length)return;const r=C.CHK[idx];
-  // 尝试服务端签到
-  if(apiOnline||await Api.health()){try{const d=await Api.doCheckin();userM.addCoins(d.reward.coins);userM.addDia(d.reward.diamonds);userM.addExp(C.EXP_CHK);S.setN('chk_day_'+curUser,d.checkinDay);S.setB('chk_today_'+curUser,true);S.set('chk_date_'+curUser,getToday());S.setO('user_'+curUser,userM.toObj());toast('签到成功(云端)！💰+'+d.reward.coins+' 💎+'+d.reward.diamonds);closeCheckin();renderHome();return}catch(e){toast('云端签到失败，使用本地');}}
-  if(!userM)loadHome();
-  userM.addCoins(r.coins);userM.addDia(r.dia);userM.addExp(C.EXP_CHK);
-  S.setN('chk_day_'+curUser,day>=7?1:day+1);S.setB('chk_today_'+curUser,true);S.set('chk_date_'+curUser,getToday());
-  S.setO('user_'+curUser,userM.toObj());
-  toast('签到成功！💰+'+r.coins+' 💎+'+r.dia);closeCheckin();renderHome();
+  if(_checkingIn)return;
+  _checkingIn=true;
+  try{
+    if(!curUser||curUser==='undefined')curUser=S.get('username','');
+    // 先检查本地是否已签到
+    if(S.getB('chk_today_'+curUser,false)){toast('今日已签到，请明天再来~');closeCheckin();return}
+    const day=S.getN('chk_day_'+curUser,1);const idx=day-1;if(idx<0||idx>=C.CHK.length){_checkingIn=false;return}const r=C.CHK[idx];
+    // 尝试服务端签到
+    if(apiOnline||await Api.health()){
+      try{
+        const d=await Api.doCheckin();
+        if(!userM)loadHome();
+        userM.addCoins(d.reward.coins);userM.addDia(d.reward.diamonds);userM.addExp(C.EXP_CHK);
+        S.setN('chk_day_'+curUser,d.checkinDay);S.setB('chk_today_'+curUser,true);S.set('chk_date_'+curUser,getToday());
+        S.setO('user_'+curUser,userM.toObj());
+        toast('签到成功(云端)！💰+'+d.reward.coins+' 💎+'+d.reward.diamonds);
+        closeCheckin();renderHome();return;
+      }catch(e){
+        // 如果是"今日已签到"的错误，直接返回不执行本地签到
+        if(e.message&&e.message.includes('今日已签到')){toast('今日已签到，请明天再来~');closeCheckin();return}
+        toast('云端签到失败，使用本地');
+      }
+    }
+    // 本地签到：二次确认防止重复
+    if(S.getB('chk_today_'+curUser,false)){toast('今日已签到，请明天再来~');closeCheckin();return}
+    if(!userM)loadHome();
+    userM.addCoins(r.coins);userM.addDia(r.dia);userM.addExp(C.EXP_CHK);
+    S.setN('chk_day_'+curUser,day>=7?1:day+1);S.setB('chk_today_'+curUser,true);S.set('chk_date_'+curUser,getToday());
+    S.setO('user_'+curUser,userM.toObj());
+    toast('签到成功！💰+'+r.coins+' 💎+'+r.dia);closeCheckin();renderHome();
+  }finally{_checkingIn=false}
 }
 function showTasks(){toast(C.TASKS.map(t=>t.icon+' '+t.name+': 进行中 ('+t.rc+'💰+'+t.rd+'💎)').join('\n'),3500)}
 function collectMine(){
